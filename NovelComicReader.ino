@@ -1,32 +1,32 @@
-#include "config.h"
-#include "display.h"
+#include "src/config/config.h"
+#include "src/core/display.h"
+#include "src/core/sdcard.h"
+#include "src/core/router.h"
+#include "src/pages/pages.h"
+#include "src/core/touch.h"   // Include the new Touch class header
+#include <SPI.h>              // Re-add for direct access
+#include <XPT2046_Touchscreen.h> // Re-add for direct access (needed by Touch class indirectly)
+#include <TFT_eSPI.h>         // Re-add for direct access
 
-#include "sdcard.h"
-#include "router.h"
-#include "pages.h"
-#include <SPI.h>
-#include <XPT2046_Touchscreen.h>
-#include <TFT_eSPI.h>
 
-
-SPIClass touchSPI = SPIClass(TOUCH_SPI);
+// SPIClass touchSPI = SPIClass(TOUCH_SPI); // Removed, handled by Touch class
 SPIClass sdSPI = SPIClass(HSPI);
-XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
+// XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ); // Removed, handled by Touch class
 
+// Get Singleton instances
 Router& router = Router::getInstance();
 Display& display = Display::getInstance();
 SDCard &sd = SDCard::getInstance();
+Touch& touch = Touch::getInstance(); // Get Touch instance
 
 void setup() {
     Serial.begin(115200);
     Serial.println("Starting Novel/Comic Reader...");
 
-    // 初始化触摸屏SPI
-    touchSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
-    ts.begin(touchSPI);
-    ts.setRotation(1);
+    // Initialize Touch Screen (now uses Touch class)
+    touch.begin();
 
-    // 初始化SD卡SPI
+    // Initialize SD Card SPI
     sdSPI.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);
     
     // 初始化显示屏
@@ -45,8 +45,9 @@ void setup() {
     }
     
     // 注册页面路由
-    router.registerPage("browser", createFileBrowserPage);
-    router.registerPage("viewer", createImageViewerPage);
+    router.registerPage("browser", []() -> Page* { return createFileBrowserPage(); });
+    router.registerPage("viewer", []() -> Page* { return createImageViewerPage(); });
+    router.registerPage("comic", []() -> Page* { return createComicViewerPage(); });
     
     // 导航到文件浏览页面
     router.navigateTo("browser");
@@ -58,21 +59,17 @@ void loop() {
     
     
 
-    // 检查触摸
-    if (ts.touched()) {
-        TS_Point touchp = ts.getPoint();
-
-        // 映射触摸坐标到屏幕
-        int touchx = map(touchp.x, TOUCH_MIN_X, TOUCH_MAX_X, 0, SCREEN_WIDTH);
-        int touchy = map(touchp.y, TOUCH_MIN_Y, TOUCH_MAX_Y, 0, SCREEN_HEIGHT);
-        Serial.println("Touch detected: (" + String(touchx) + ", " + String(touchy) + ")");
+    // Check for touch input using the Touch class
+    uint16_t touchX, touchY;
+    if (touch.getPoint(touchX, touchY)) { // getPoint now returns true if touched and provides mapped coordinates
+        Serial.println("Touch detected: (" + String(touchX) + ", " + String(touchY) + ")");
         Page *currentPage = router.getCurrentPage();
         if (currentPage)
         {
-            currentPage->handleTouch(touchx, touchy);
+            currentPage->handleTouch(touchX, touchY);
         }
-        // 防抖延迟
-        //delay(200);
+        // Optional: Add debounce or touch release logic here if needed
+        // delay(50); // Simple debounce
 
         // 等待触摸释放
         //while (touch.isTouched()) {

@@ -4,7 +4,7 @@
 #include <SD.h>
 #include <vector>
 #include <string>
-#include "config.h"
+#include "../config/config.h" // Adjusted path
 
 struct FileItem {
     String name;          // 文件/文件夹名称

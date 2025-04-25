@@ -6,80 +6,102 @@
 #include <string>
 #include <unordered_map>
 #include <cstdint>
-#include "config.h"
+#include "../config/config.h" // Adjusted path
+// #include "pages.h" // Remove this include
+
+// Forward declarations to break circular dependency
+class Page;
+class FileBrowserPage;
+class ImageViewerPage;
+class TextViewerPage;
+class ComicViewerPage;
 
 // 页面基类
-class Page {
+class Page
+{
 public:
     virtual void display() = 0;
     virtual void handleTouch(uint16_t x, uint16_t y) = 0;
     virtual ~Page() = default;
-    
-    void* params = nullptr;  // 页面参数
+
+    void *params = nullptr; // 页面参数
 };
 
 // 路由历史记录项
-struct RouteHistoryItem {
+struct RouteHistoryItem
+{
     std::string name;
-    void* params;
+    void *params;
 };
 
 // 路由处理类
-class Router {
+class Router
+{
 private:
     Router() = default;
     std::vector<RouteHistoryItem> history;
-    std::unordered_map<std::string, std::function<Page*()>> routes;
-    Page* currentPage = nullptr;
+    std::unordered_map<std::string, std::function<Page *()>> routes;
+    Page *currentPage = nullptr;
 
-    static Router* instance;
+    static Router *instance;
 
 public:
-    static Router& getInstance() {
-        if (!instance) {
+    static Router &getInstance()
+    {
+        if (!instance)
+        {
             instance = new Router();
         }
         return *instance;
     }
-    
+
     // 注册页面
-    void registerPage(const std::string& name, std::function<Page*()> creator) {
+    void registerPage(const std::string &name, std::function<Page *()> creator)
+    {
         routes[name] = creator;
     }
-    
+
     // 导航到指定页面
-    void navigateTo(const std::string& name, void* params = nullptr) {
+    void navigateTo(const std::string &name, void *params = nullptr)
+    {
         auto it = routes.find(name);
-        if (it != routes.end()) {
+        if (it != routes.end())
+        {
             // 创建新页面
-            Page* newPage = it->second();
+            Page *newPage = it->second();
             newPage->params = params;
-            
+
+            // Special handling for ComicViewerPage removed - loading is handled in setComicPath
+
             // 保存当前页面到历史记录
-            if (currentPage) {
+            if (currentPage)
+            {
                 history.push_back({name, params});
             }
-            
+
             // 删除旧页面并切换到新页面
             delete currentPage;
             currentPage = newPage;
             currentPage->display();
         }
     }
-    
+
     // 返回上一页
-    bool goBack() {
-        if (history.empty()) {
+    bool goBack()
+    {
+        if (history.empty())
+        {
             return false;
         }
-        
+
         // 获取上一页信息
         RouteHistoryItem lastPage = history.back();
         history.pop_back();
-        
+
         // 切换到上一页
         auto it = routes.find(lastPage.name);
-        if (it != routes.end()) {
+        if (it != routes.end())
+        {
             delete currentPage;
             currentPage = it->second();
             currentPage->params = lastPage.params;
@@ -88,13 +110,15 @@ public:
         }
         return false;
     }
-    
+
     // 获取当前页面
-    Page* getCurrentPage() {
+    Page *getCurrentPage()
+    {
         return currentPage;
     }
-    
-    ~Router() {
+
+    ~Router()
+    {
         delete currentPage;
         delete instance;
     }

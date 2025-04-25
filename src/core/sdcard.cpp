@@ -26,7 +26,43 @@ bool SDCard::begin() {
 bool SDCard::checkIsComic(const String& path) {
     // 检查目录下是否存在.info文件
     String infoPath = path + "/" + INFO_FILE;
-    return SD.exists(infoPath);
+    if (!SD.exists(infoPath)) {
+        return false;
+    }
+
+    // 读取.info文件
+    File infoFile = SD.open(infoPath);
+    if (!infoFile) {
+        return false;
+    }
+
+    // 读取文件内容
+    String content = infoFile.readString();
+    infoFile.close();
+
+    // 简单解析JSON，查找"type":"comic"
+    int typePos = content.indexOf("\"type\"");
+    if (typePos == -1) {
+        return false;
+    }
+
+    int colonPos = content.indexOf(":", typePos);
+    if (colonPos == -1) {
+        return false;
+    }
+
+    int quotePos = content.indexOf("\"", colonPos);
+    if (quotePos == -1) {
+        return false;
+    }
+
+    int endQuotePos = content.indexOf("\"", quotePos + 1);
+    if (endQuotePos == -1) {
+        return false;
+    }
+
+    String type = content.substring(quotePos + 1, endQuotePos);
+    return type == "comic";
 }
 
 void SDCard::updatePageInfo() {

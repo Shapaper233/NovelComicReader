@@ -1,6 +1,25 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// 字体设置
+#define TEXT_FONT 2     // 使用Font2作为默认字体
+
+// 颜色定义
+#ifndef TFT_BLACK
+#define TFT_BLACK       0x0000
+#define TFT_WHITE       0xFFFF
+#define TFT_BLUE        0x001F
+#define TFT_DARKGREY    0x7BEF
+#define TFT_YELLOW      0xFFE0
+#define TFT_CYAN        0x07FF
+#endif
+
+// 文本对齐方式
+#ifndef MC_DATUM
+#define MC_DATUM        4  // 中心对齐
+#define TL_DATUM        0  // 左对齐
+#endif
+
 // 屏幕引脚定义
 #define TFT_CS   15    // 片选控制信号
 #define TFT_DC   2     // 数据/命令选择

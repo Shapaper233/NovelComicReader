@@ -1,0 +1,17 @@
+{
+    "name": "NovelComicReader",
+    "version": "1.0.0",
+    "description": "ESP32 Novel/Comic Reader for 2.8inch LCD",
+    "keywords": "esp32, lcd, reader",
+    "authors": {
+        "name": "User",
+        "url": ""
+    },
+    "dependencies": {
+        "bodmer/TFT_eSPI": "^2.5.0",
+        "paulstoffregen/XPT2046_Touchscreen": "^1.4.0",
+        "arduino-libraries/SD": "^1.2.4"
+    },
+    "frameworks": "arduino",
+    "platforms": "espressif32"
+}

@@ -1,0 +1,1402 @@
+{
+  "布": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 0
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 0
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 0
+    }
+  },
+  "龙": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 32
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 72
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 128
+    }
+  },
+  "平": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 64
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 144
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 256
+    }
+  },
+  "灭": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 96
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 216
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 384
+    }
+  },
+  "轧": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 128
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 288
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 512
+    }
+  },
+  "东": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 160
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 360
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 640
+    }
+  },
+  "卡": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 192
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 432
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 768
+    }
+  },
+  "北": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 224
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 504
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 896
+    }
+  },
+  "占": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 256
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 576
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 1024
+    }
+  },
+  "业": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 288
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 648
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 1152
+    }
+  },
+  "旧": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 320
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 720
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 1280
+    }
+  },
+  "帅": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 352
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 792
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 1408
+    }
+  },
+  "归": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 384
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 864
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 1536
+    }
+  },
+  "且": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 416
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 936
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 1664
+    }
+  },
+  "旦": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 448
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 1008
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 1792
+    }
+  },
+  "目": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 480
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 1080
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 1920
+    }
+  },
+  "叶": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 512
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 1152
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 2048
+    }
+  },
+  "甲": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 544
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 1224
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 2176
+    }
+  },
+  "申": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 576
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 1296
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 2304
+    }
+  },
+  "叮": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 608
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 1368
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 2432
+    }
+  },
+  "电": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 640
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 1440
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 2560
+    }
+  },
+  "号": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 672
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 1512
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 2688
+    }
+  },
+  "田": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 704
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 1584
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 2816
+    }
+  },
+  "由": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 736
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 1656
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 2944
+    }
+  },
+  "史": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 768
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 1728
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 3072
+    }
+  },
+  "只": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 800
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 1800
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 3200
+    }
+  },
+  "央": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 832
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 1872
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 3328
+    }
+  },
+  "兄": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 864
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 1944
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 3456
+    }
+  },
+  "叼": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 896
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 2016
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 3584
+    }
+  },
+  "叫": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 928
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 2088
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 3712
+    }
+  },
+  "另": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 960
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 2160
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 3840
+    }
+  },
+  "叨": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 992
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 2232
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 3968
+    }
+  },
+  "叹": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1024
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 2304
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 4096
+    }
+  },
+  "四": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1056
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 2376
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 4224
+    }
+  },
+  "生": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1088
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 2448
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 4352
+    }
+  },
+  "失": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1120
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 2520
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 4480
+    }
+  },
+  "禾": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1152
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 2592
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 4608
+    }
+  },
+  "丘": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1184
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 2664
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 4736
+    }
+  },
+  "付": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1216
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 2736
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 4864
+    }
+  },
+  "仗": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1248
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 2808
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 4992
+    }
+  },
+  "代": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1280
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 2880
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 5120
+    }
+  },
+  "仙": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1312
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 2952
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 5248
+    }
+  },
+  "们": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1344
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 3024
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 5376
+    }
+  },
+  "仪": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1376
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 3096
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 5504
+    }
+  },
+  "白": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1408
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 3168
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 5632
+    }
+  },
+  "仔": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1440
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 3240
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 5760
+    }
+  },
+  "他": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1472
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 3312
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 5888
+    }
+  },
+  "斥": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1504
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 3384
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 6016
+    }
+  },
+  "瓜": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1536
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 3456
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 6144
+    }
+  },
+  "乎": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1568
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 3528
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 6272
+    }
+  },
+  "丛": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1600
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 3600
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 6400
+    }
+  },
+  "令": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1632
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 3672
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 6528
+    }
+  },
+  "用": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1664
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 3744
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 6656
+    }
+  },
+  "甩": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1696
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 3816
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 6784
+    }
+  },
+  "印": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1728
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 3888
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 6912
+    }
+  },
+  "乐": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1760
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 3960
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 7040
+    }
+  },
+  "句": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1792
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 4032
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 7168
+    }
+  },
+  "匆": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1824
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 4104
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 7296
+    }
+  },
+  "册": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1856
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 4176
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 7424
+    }
+  },
+  "犯": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1888
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 4248
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 7552
+    }
+  },
+  "外": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1920
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 4320
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 7680
+    }
+  },
+  "处": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1952
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 4392
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 7808
+    }
+  },
+  "冬": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 1984
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 4464
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 7936
+    }
+  },
+  "鸟": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2016
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 4536
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 8064
+    }
+  },
+  "务": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2048
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 4608
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 8192
+    }
+  },
+  "包": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2080
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 4680
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 8320
+    }
+  },
+  "饥": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2112
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 4752
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 8448
+    }
+  },
+  "主": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2144
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 4824
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 8576
+    }
+  },
+  "市": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2176
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 4896
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 8704
+    }
+  },
+  "立": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2208
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 4968
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 8832
+    }
+  },
+  "闪": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2240
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 5040
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 8960
+    }
+  },
+  "兰": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2272
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 5112
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 9088
+    }
+  },
+  "半": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2304
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 5184
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 9216
+    }
+  },
+  "汁": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2336
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 5256
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 9344
+    }
+  },
+  "汇": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2368
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 5328
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 9472
+    }
+  },
+  "头": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2400
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 5400
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 9600
+    }
+  },
+  "汉": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2432
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 5472
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 9728
+    }
+  },
+  "宁": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2464
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 5544
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 9856
+    }
+  },
+  "穴": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2496
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 5616
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 9984
+    }
+  },
+  "它": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2528
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 5688
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 10112
+    }
+  },
+  "讨": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2560
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 5760
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 10240
+    }
+  },
+  "写": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2592
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 5832
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 10368
+    }
+  },
+  "让": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2624
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 5904
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 10496
+    }
+  },
+  "礼": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2656
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 5976
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 10624
+    }
+  },
+  "训": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2688
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 6048
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 10752
+    }
+  },
+  "必": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2720
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 6120
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 10880
+    }
+  },
+  "议": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2752
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 6192
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 11008
+    }
+  },
+  "讯": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2784
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 6264
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 11136
+    }
+  },
+  "记": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2816
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 6336
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 11264
+    }
+  },
+  "永": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2848
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 6408
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 11392
+    }
+  },
+  "司": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2880
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 6480
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 11520
+    }
+  },
+  "尼": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2912
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 6552
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 11648
+    }
+  },
+  "民": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2944
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 6624
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 11776
+    }
+  },
+  "出": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 2976
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 6696
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 11904
+    }
+  },
+  "辽": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 3008
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 6768
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 12032
+    }
+  },
+  "奶": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 3040
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 6840
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 12160
+    }
+  },
+  "奴": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 3072
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 6912
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 12288
+    }
+  },
+  "加": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 3104
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 6984
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 12416
+    }
+  },
+  "召": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 3136
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 7056
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 12544
+    }
+  },
+  "皮": {
+    "16": {
+      "file": "16x16_3.font",
+      "offset": 3168
+    },
+    "24": {
+      "file": "24x24_3.font",
+      "offset": 7128
+    },
+    "32": {
+      "file": "32x32_3.font",
+      "offset": 12672
+    }
+  }
+}

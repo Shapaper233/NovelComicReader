@@ -1,1 +1,1 @@
-/sbin/python3.13 /home/shapaper/My_Data/NovelComicReader/tools/font_generator.py /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc ./tools/sample_chars.txt 
+/sbin/python3.13 '/home/shapaper/My_Data/demo1/NovelComicReader/tools/font_generator.py' /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc '/home/shapaper/My_Data/demo1/NovelComicReader/tools/sample_chars.txt'

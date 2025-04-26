@@ -39,7 +39,8 @@
         "format": "cpp",
         "initializer_list": "cpp",
         "text_encoding": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "fstream": "cpp"
     },
     "arduino.board": "esp32:esp32:esp32s3",
     "arduino.defaultCore": "esp32:esp32",

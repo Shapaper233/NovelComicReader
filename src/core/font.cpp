@@ -173,32 +173,33 @@ String Font::findIndexFile(const char* character) {
 bool Font::loadCharacter(const char* character, uint16_t size) {
     clearBuffer();
 
-    // 尝试从缓存加载
+    // 尝试从缓存加载 (直接尝试打开)
     String cacheFilename = "/font_data/cache/" + String(character) + "_" + String(size) + ".font";
-    if (SD.exists(cacheFilename)) {
-        // 从缓存加载字体数据
-        File cacheFile = SD.open(cacheFilename);
-        if (!cacheFile) {
-            return false;
-        }
+    File cacheFile = SD.open(cacheFilename); // Attempt to open the cache file directly
 
+    if (cacheFile) { // Check if the file opened successfully (exists and is readable)
+        // 从缓存加载字体数据
         bufferSize = (size * size + 7) / 8;
         fontBuffer = (uint8_t*)malloc(bufferSize);
         if (!fontBuffer) {
             cacheFile.close();
-            return false;
+            return false; // Allocation failed
         }
 
-        if (cacheFile.read(fontBuffer, bufferSize) != bufferSize) {
-            clearBuffer();
+        if (cacheFile.read(fontBuffer, bufferSize) == bufferSize) {
+            // Successfully read from cache
             cacheFile.close();
-            return false;
+            currentSize = size;
+            return true; // Character loaded from cache
+        } else {
+            // Read failed (e.g., file corrupted or incomplete)
+            clearBuffer(); // Clean up allocated buffer
+            cacheFile.close();
+            // Proceed to load from main font file below
         }
-
-        cacheFile.close();
-        currentSize = size;
-        return true;
     }
+    // If cacheFile is false here, it means the file didn't exist or couldn't be opened.
+    // Continue to load from the main index/font files.
     
     // 查找包含该字符的索引文件
     String indexFile = findIndexFile(character);
@@ -286,14 +287,15 @@ bool Font::loadCharacter(const char* character, uint16_t size) {
     }
 
     // 将字体数据保存到缓存
-    File cacheFile;
-    if (!SD.exists(cacheFilename)) {
-      cacheFile = SD.open(cacheFilename, FILE_WRITE);
-    } else {
-      cacheFile = SD.open(cacheFilename, FILE_WRITE);
-    }
-    
-    if (cacheFile) {
+    // Re-open the file for writing. Note: cacheFile was declared earlier for reading.
+    // We need to close it if it was opened for reading but failed (e.g., read error).
+    // However, the logic flow ensures cacheFile is closed if reading fails.
+    // If reading succeeded, it was closed after reading.
+    // If the file didn't exist initially, cacheFile is already invalid/closed.
+    // So, we can safely attempt to open for writing here.
+    cacheFile = SD.open(cacheFilename, FILE_WRITE); // Re-assign to the existing cacheFile variable
+
+    if (cacheFile) { // Check if opening for writing succeeded
         cacheFile.write(fontBuffer, bufferSize);
         cacheFile.close();
     }

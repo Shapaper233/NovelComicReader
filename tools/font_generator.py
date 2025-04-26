@@ -13,8 +13,10 @@ class FontGenerator:
         self.chars_per_file = chars_per_file
         self.output_dir = "font_data"
         self.debug_dir = os.path.join(self.output_dir, "debug")
+        self.cache_dir = os.path.join(self.output_dir, "cache") # Add cache directory path
         os.makedirs(self.output_dir, exist_ok=True)
         os.makedirs(self.debug_dir, exist_ok=True)
+        os.makedirs(self.cache_dir, exist_ok=True) # Create cache directory
 
     def char_to_bitmap(self, char, size):
         # 创建更大的画布以确保完整捕获字符
@@ -69,12 +71,36 @@ class FontGenerator:
                 chunk_chars = chars[i:i + self.chars_per_file]
                 font_data = []
                 
-                # 为每个字符生成位图数据
+                # 为每个字符生成位图数据并保存单个缓存文件
                 for char in chunk_chars:
                     bitmap = self.char_to_bitmap(char, size)
-                    font_data.extend(bitmap)
-                
-                # 保存字体数据
+                    font_data.extend(bitmap) # Keep accumulating for the chunked file
+
+                    # --- Add cache file generation ---
+                    # Pack individual character bitmap to bytes
+                    char_bytes = bytearray()
+                    num_bits = size * size
+                    for bit_idx in range(0, num_bits, 8):
+                        byte = 0
+                        for j in range(8):
+                            current_bit_idx = bit_idx + j
+                            if current_bit_idx < num_bits and bitmap[current_bit_idx]:
+                                byte |= (1 << j)
+                        char_bytes.append(byte)
+
+                    # Save individual cache file
+                    # Replace characters potentially invalid in filenames (basic example)
+                    safe_char_name = char.replace('/', '_slash_').replace('\\', '_bslash_')
+                    cache_filename = os.path.join(self.cache_dir, f"{safe_char_name}_{size}.font")
+                    try:
+                        with open(cache_filename, 'wb') as f_cache:
+                            f_cache.write(char_bytes)
+                    except OSError as e:
+                        # Handle cases where filename might still be invalid
+                        print(f"Warning: Could not write cache file '{cache_filename}': {e}")
+                    # --- End cache file generation ---
+
+                # 保存字体数据 (Chunked file)
                 font_filename = f"{size}x{size}_{chunk_idx + 1}.font"
                 font_path = os.path.join(self.output_dir, font_filename)
                 

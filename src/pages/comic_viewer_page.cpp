@@ -21,6 +21,22 @@ ComicViewerPage::ComicViewerPage()
     Serial.println("ComicViewerPage constructor called");
 }
 
+// Implementation of the virtual setParams method
+void ComicViewerPage::setParams(void* params) {
+    if (params) {
+        // Cast the void pointer back to a String pointer
+        String* pathPtr = static_cast<String*>(params);
+        // Call the existing setComicPath method with the actual path String
+        setComicPath(*pathPtr);
+    } else {
+        // Handle case where no parameters were passed (optional)
+        Serial.println("ComicViewerPage::setParams received null params.");
+        // Set a default state or show an error?
+        setComicPath(""); // Set empty path to indicate an issue
+    }
+}
+
+
 /**
  * @brief 加载指定漫画路径下的所有图片文件。
  * 按照 "1.bmp", "2.bmp", ... 的顺序查找连续的 BMP 文件。
@@ -197,8 +213,8 @@ void ComicViewerPage::drawContent()
     Serial.println(yOffset);
 
     // --- 定义缓冲区 ---
-    // 缓冲区大小，例如一次处理 16 行。可根据可用内存调整。
-    const int BUFFER_ROWS = 16;
+    // 缓冲区大小，减少以降低单次 heap 分配大小，缓解碎片问题
+    const int BUFFER_ROWS = 8; // Reduced from 16
     const int BPP = 3; // Bytes per pixel (24-bit BMP)
     // 计算存储原始 BMP 行数据（包括填充）所需的最大缓冲区大小
     // BMP 行数据需要填充到 4 字节的倍数: ((width * BPP + 3) & ~3)
@@ -206,9 +222,18 @@ void ComicViewerPage::drawContent()
     const int MAX_RAW_ROW_SIZE = ((SCREEN_WIDTH * BPP + 3) & ~3);
     const int RAW_BUFFER_SIZE = MAX_RAW_ROW_SIZE * BUFFER_ROWS;
 
-    // 使用静态缓冲区避免堆内存碎片化
-    static uint8_t rawBuffer[RAW_BUFFER_SIZE];      // 存储多行原始 BGR 数据
-    static uint16_t pixelBuffer[SCREEN_WIDTH];      // 存储转换后的一行 RGB565 像素数据
+    // Dynamically allocate buffers on the heap
+    uint8_t* rawBuffer = new (std::nothrow) uint8_t[RAW_BUFFER_SIZE];
+    uint16_t* pixelBuffer = new (std::nothrow) uint16_t[SCREEN_WIDTH];
+
+    // Check if allocation succeeded
+    if (!rawBuffer || !pixelBuffer) {
+        Serial.println("ERROR: Failed to allocate drawing buffers in drawContent!");
+        delete[] rawBuffer; // Safe even if nullptr
+        delete[] pixelBuffer; // Safe even if nullptr
+        displayManager.drawCenteredText("Memory Error", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+        return; // Cannot proceed
+    }
 
     // --- 绘制可见图片 ---
     // 从 startImage 开始遍历，直到图片底部超出屏幕底部 (yOffset >= SCREEN_HEIGHT)
@@ -385,6 +410,10 @@ void ComicViewerPage::drawContent()
         yOffset += height; // 更新屏幕 Y 坐标，准备绘制下一张图片
     }
     // --- 结束绘制所有可见图片 ---
+
+    // --- Clean up dynamically allocated buffers ---
+    delete[] rawBuffer;
+    delete[] pixelBuffer;
 }
 
 
@@ -534,12 +563,23 @@ void ComicViewerPage::drawNewArea(int y, int h)
     // --- 结束计算图片起始位置 ---
 
     // --- 定义缓冲区 (与 drawContent 相同) ---
-    const int BUFFER_ROWS = 16;
+    // 缓冲区大小，减少以降低单次 heap 分配大小，缓解碎片问题
+    const int BUFFER_ROWS = 8; // Reduced from 16
     const int BPP = 3;
     const int MAX_RAW_ROW_SIZE = ((SCREEN_WIDTH * BPP + 3) & ~3);
     const int RAW_BUFFER_SIZE = MAX_RAW_ROW_SIZE * BUFFER_ROWS;
-    static uint8_t rawBuffer[RAW_BUFFER_SIZE];
-    static uint16_t pixelBuffer[SCREEN_WIDTH];
+    // Dynamically allocate buffers on the heap
+    uint8_t* rawBuffer = new (std::nothrow) uint8_t[RAW_BUFFER_SIZE];
+    uint16_t* pixelBuffer = new (std::nothrow) uint16_t[SCREEN_WIDTH];
+
+    // Check if allocation succeeded
+    if (!rawBuffer || !pixelBuffer) {
+        Serial.println("ERROR: Failed to allocate drawing buffers in drawNewArea!");
+        delete[] rawBuffer; // Safe even if nullptr
+        delete[] pixelBuffer; // Safe even if nullptr
+        // Don't return here, maybe just skip drawing the new area or draw an error?
+        // For now, just log and continue (might result in visual glitches)
+    }
     // --- 结束定义缓冲区 ---
 
     // --- 遍历图片，绘制与目标区域重叠的部分 ---
@@ -653,6 +693,12 @@ void ComicViewerPage::drawNewArea(int y, int h)
         }
     }
     // --- 结束遍历所有图片 ---
+
+    // --- Clean up dynamically allocated buffers ---
+    // Important: Only delete if allocation succeeded!
+    delete[] rawBuffer;
+    delete[] pixelBuffer;
+
     Serial.println("Finished drawing new area.");
 }
 
@@ -790,4 +836,20 @@ void ComicViewerPage::handleTouch(uint16_t x, uint16_t y)
         Serial.println("Middle area touched, returning to browser");
         Router::getInstance().goBack(); // 返回到上一个页面
     }
+}
+
+/**
+ * @brief 清理页面资源，特别是释放 vector 占用的内存。
+ */
+void ComicViewerPage::cleanup() {
+    Serial.println("ComicViewerPage::cleanup() called.");
+    imageFiles.clear();
+    imageFiles.shrink_to_fit(); // Attempt to release vector memory
+    imageHeights.clear();
+    imageHeights.shrink_to_fit(); // Attempt to release vector memory
+    // Reset other state if necessary
+    currentPath = "";
+    scrollOffset = 0;
+    totalComicHeight = 0;
+    Serial.println("ComicViewerPage resources cleaned up.");
 }

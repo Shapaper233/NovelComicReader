@@ -1,10 +1,8 @@
 #include <Arduino.h> // 包含 Arduino 核心库，用于 Serial 等
 #include "pages.h"   // 包含页面类的声明
+#include "text_viewer_page.h" // Include TextViewerPage header here
 
-// 初始化 FileBrowserPage 的静态成员 comicViewer
-// 这个指针用于缓存 ComicViewerPage 的实例，避免重复创建
-// 并在不同页面间共享同一个漫画阅读器实例，可以保留阅读状态
-ComicViewerPage *FileBrowserPage::comicViewer = nullptr;
+// Static member definition removed as the member itself was removed from FileBrowserPage
 
 
 // --- 页面类实现已移动到各自的 .cpp 文件 ---
@@ -37,11 +35,23 @@ ImageViewerPage *createImageViewerPage()
     return new ImageViewerPage();
 }
 
+/**
+ * @brief 创建文本阅读器页面的工厂函数。
+ * @return 指向新创建的 TextViewerPage 对象的指针。
+ */
+TextViewerPage *createTextViewerPage()
+{
+    // 直接使用 new 创建 TextViewerPage 实例
+    return new TextViewerPage();
+}
+
+
+/**
+ * @brief 创建漫画阅读器页面的工厂函数。
+ * @return 指向新创建的 ComicViewerPage 对象的指针。
+ */
 ComicViewerPage *createComicViewerPage()
 {
-    if (FileBrowserPage::comicViewer == nullptr)
-    {
-        FileBrowserPage::comicViewer = new ComicViewerPage();
-    }
-    return FileBrowserPage::comicViewer;
+    // Remove singleton logic, always create a new instance
+    return new ComicViewerPage();
 }

@@ -95,13 +95,18 @@ bool SDCard::loadDirectory(const String& path) {
         item.name = String(entry.name());
         item.isDirectory = entry.isDirectory();
         
+        item.isText = false; // Default to false
         // 如果是目录，检查是否是漫画目录
         if (item.isDirectory) {
             item.isComic = checkIsComic(entry.path());
         } else {
             item.isComic = false;
+            // 如果是文件，检查是否是 .txt 文件
+            if (item.name.endsWith(".txt") || item.name.endsWith(".TXT")) {
+                item.isText = true;
+            }
         }
-        
+
         currentItems.push_back(item);
         entry.close();
     }

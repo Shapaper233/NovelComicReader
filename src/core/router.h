@@ -1,9 +1,10 @@
 #ifndef ROUTER_H
 #define ROUTER_H
 
+#include <Arduino.h> // Added to define String type
 #include <functional>
 #include <vector>
-#include <string>
+#include <string> // std::string
 #include <unordered_map>
 #include <cstdint>
 #include "../config/config.h" // Adjusted path
@@ -15,17 +16,6 @@ class FileBrowserPage;
 class ImageViewerPage;
 class TextViewerPage;
 class ComicViewerPage;
-
-// 页面基类
-class Page
-{
-public:
-    virtual void display() = 0;
-    virtual void handleTouch(uint16_t x, uint16_t y) = 0;
-    virtual ~Page() = default;
-
-    void *params = nullptr; // 页面参数
-};
 
 // 路由历史记录项
 struct RouteHistoryItem
@@ -42,86 +32,33 @@ private:
     std::vector<RouteHistoryItem> history;
     std::unordered_map<std::string, std::function<Page *()>> routes;
     Page *currentPage = nullptr;
+    std::string currentPageName; // Added: Track the name of the current page
+    void* currentPageParams = nullptr; // Added: Track the params used for the current page
 
     static Router *instance;
 
 public:
-    static Router &getInstance()
-    {
-        if (!instance)
-        {
-            instance = new Router();
-        }
-        return *instance;
-    }
+    // Prevent copying and assignment
+    Router(const Router&) = delete;
+    Router& operator=(const Router&) = delete;
 
-    // 注册页面
-    void registerPage(const std::string &name, std::function<Page *()> creator)
-    {
-        routes[name] = creator;
-    }
+    // Static method to get the singleton instance
+    static Router &getInstance();
 
-    // 导航到指定页面
-    void navigateTo(const std::string &name, void *params = nullptr)
-    {
-        auto it = routes.find(name);
-        if (it != routes.end())
-        {
-            // 创建新页面
-            Page *newPage = it->second();
-            newPage->params = params;
+    // Register a page creator function with a name
+    void registerPage(const std::string &name, std::function<Page *()> creator);
 
-            // Special handling for ComicViewerPage removed - loading is handled in setComicPath
+    // Navigate to a registered page by name, optionally passing parameters
+    void navigateTo(const std::string &name, void *params = nullptr);
 
-            // 保存当前页面到历史记录
-            if (currentPage)
-            {
-                history.push_back({name, params});
-            }
+    // Navigate back to the previous page in history
+    bool goBack();
 
-            // 删除旧页面并切换到新页面
-            delete currentPage;
-            currentPage = newPage;
-            currentPage->display();
-        }
-    }
+    // Get a pointer to the currently active page
+    Page *getCurrentPage();
 
-    // 返回上一页
-    bool goBack()
-    {
-        if (history.empty())
-        {
-            return false;
-        }
-
-        // 获取上一页信息
-        RouteHistoryItem lastPage = history.back();
-        history.pop_back();
-
-        // 切换到上一页
-        auto it = routes.find(lastPage.name);
-        if (it != routes.end())
-        {
-            delete currentPage;
-            currentPage = it->second();
-            currentPage->params = lastPage.params;
-            currentPage->display();
-            return true;
-        }
-        return false;
-    }
-
-    // 获取当前页面
-    Page *getCurrentPage()
-    {
-        return currentPage;
-    }
-
-    ~Router()
-    {
-        delete currentPage;
-        delete instance;
-    }
+    // Destructor
+    ~Router();
 };
 
 #endif // ROUTER_H

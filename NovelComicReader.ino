@@ -2,7 +2,8 @@
 #include "src/core/display.h"
 #include "src/core/sdcard.h"
 #include "src/core/router.h"
-#include "src/pages/pages.h"
+#include "src/pages/pages.h" // Includes base Page and factory declarations
+#include "src/pages/text_viewer_page.h" // Include full definition for TextViewerPage
 #include "src/core/touch.h"   // Include the new Touch class header
 #include <SPI.h>              // Re-add for direct access
 #include <XPT2046_Touchscreen.h> // Re-add for direct access (needed by Touch class indirectly)
@@ -48,6 +49,7 @@ void setup() {
     router.registerPage("browser", []() -> Page* { return createFileBrowserPage(); });
     router.registerPage("viewer", []() -> Page* { return createImageViewerPage(); });
     router.registerPage("comic", []() -> Page* { return createComicViewerPage(); });
+    router.registerPage("text", []() -> Page* { return createTextViewerPage(); }); // Register TextViewerPage
     
     // 导航到文件浏览页面
     router.navigateTo("browser");

@@ -1,3 +1,4 @@
+#include <Arduino.h> // Include Arduino core headers
 #include "display.h"
 
 Display *Display::instance = nullptr;
@@ -65,19 +66,32 @@ void Display::drawCharacter(const char *character, uint16_t x, uint16_t y, uint8
     uint16_t fontHeight = size * 16;
     uint16_t byteWidth = (fontWidth + 7) / 8;
 
-    // 绘制点阵字体
+    // --- Optimized drawing using pushImage ---
+    // Create a buffer for 16-bit color data (RGB565)
+    uint16_t *colorBitmap = new uint16_t[fontWidth * fontHeight];
+    if (!colorBitmap) {
+        // Failed to allocate memory
+        return;
+    }
+
+    // Convert monochrome bitmap to 16-bit color bitmap
     for (uint16_t py = 0; py < fontHeight; py++)
     {
         for (uint16_t px = 0; px < fontWidth; px++)
         {
             uint16_t byteIndex = (py * byteWidth) + (px / 8);
-            uint8_t bitIndex = px % 8; // 修改位序以匹配字体生成格式
-            if (bitmap[byteIndex] & (1 << bitIndex))
-            {
-                tft.drawPixel(x + px, y + py, TFT_WHITE);
-            }
+            uint8_t bitIndex = px % 8;
+            bool isPixelSet = (bitmap[byteIndex] & (1 << bitIndex));
+            colorBitmap[py * fontWidth + px] = isPixelSet ? TFT_WHITE : TFT_BLACK; // Use background color for '0' bits
         }
     }
+
+    // Push the entire character bitmap at once
+    tft.pushImage(x, y, fontWidth, fontHeight, colorBitmap);
+
+    // Clean up the allocated buffer
+    delete[] colorBitmap;
+    // --- End of optimized drawing ---
 }
 
 void Display::drawText(const char *text, uint16_t x, uint16_t y, uint8_t size, bool useCustomFont)

@@ -1,8 +1,10 @@
 #include <Arduino.h>
 #include <FS.h>        // 用于文件系统操作，例如 File 类型
 #include <algorithm>   // 用于 std::min 和 std::max
+#include <TFT_eSPI.h>  // Include for color constants
 
 #include "pages.h"     // 包含页面基类和相关定义 (Correct path)
+#include "text_viewer_page.h" // Include full definition for TextViewerPage
 #include "../core/display.h"   // 包含显示管理类 (Adjusted path)
 #include "../core/sdcard.h"    // 包含 SD 卡管理类 (Adjusted path)
 #include "../core/router.h"    // 包含页面路由类 (Adjusted path)
@@ -53,6 +55,29 @@ void FileBrowserPage::_drawFolder(uint16_t x, uint16_t y, bool isComic)
     }
 }
 
+// Helper function to draw a text file icon
+void FileBrowserPage::_drawTextFile(uint16_t x, uint16_t y)
+{
+    TFT_eSPI* tft = displayManager.getTFT(); // Get TFT object
+    const uint16_t fileColor = TFT_WHITE;
+    const uint16_t lineColor = TFT_DARKGREY;
+
+    // Draw document outline
+    tft->drawRect(x, y, 30, 35, fileColor);
+    // Draw lines representing text
+    for (int i = 0; i < 4; ++i) {
+        tft->drawFastHLine(x + 5, y + 7 + i * 6, 20, lineColor);
+    }
+    // Draw folded corner
+    tft->drawLine(x + 20, y, x + 30, y + 10, fileColor);
+    tft->drawLine(x + 20, y, x + 20, y + 10, fileColor);
+    tft->drawLine(x + 20, y + 10, x + 30, y + 10, fileColor);
+    tft->fillRect(x+21, y+1, 9, 9, TFT_BLACK); // Cover the area behind the fold
+    tft->drawLine(x + 20, y, x + 30, y + 10, TFT_LIGHTGREY); // Fold line
+
+
+}
+
 // Helper function to draw a button
 void FileBrowserPage::_drawButton(const char *text, uint16_t x, uint16_t y, uint16_t w, uint16_t h, bool isActive)
 {
@@ -98,8 +123,13 @@ void FileBrowserPage::drawContent()
         // 如果是目录，绘制文件夹图标（区分普通目录和漫画目录）
         if (item.isDirectory)
         {
-            _drawFolder(5, y + 5, item.isComic); // Use helper function
+            _drawFolder(5, y + 5, item.isComic); // Use helper function for directories
         }
+        else if (item.isText)
+        {
+             _drawTextFile(10, y + 2); // Use helper function for text files (adjust position slightly)
+        }
+        // else: Draw other file type icons here if needed
 
         // 绘制文件名/目录名
         displayManager.drawText(item.name.c_str(), 50, y + 10, 1);
@@ -199,24 +229,17 @@ bool FileBrowserPage::handleItemTouch(uint16_t x, uint16_t y)
             Serial.print("Opening comic at path: ");
             Serial.println(fullPath);
 
-            // 获取或创建 ComicViewerPage 实例
-            // 注意：comicViewer 是 FileBrowserPage 的静态成员，用于缓存 ComicViewerPage 实例
-            // 这样可以避免每次打开漫画都重新创建页面对象，并保留阅读进度等状态
-            if (comicViewer == nullptr)
-            {
-                Serial.println("Creating new ComicViewerPage");
-                comicViewer = createComicViewerPage(); // 调用工厂函数创建
-            }
-            else
-            {
-                Serial.println("Reusing existing ComicViewerPage");
-            }
-            // 设置漫画阅读器要加载的路径
-            comicViewer->setComicPath(fullPath);
+            // Remove the static comicViewer instance caching.
+            // The router's factory function will create a new instance each time.
+            // We just need to pass the path as a parameter.
 
-            // 使用 Router 导航到漫画阅读器页面
-            Router::getInstance().navigateTo("comic", comicViewer);
-            Serial.println("Comic viewer opened");
+            // Dynamically allocate a String object to hold the path
+            // The Router will be responsible for deleting this later
+            String* pathParam = new String(fullPath);
+
+            // Pass the pointer to the dynamically allocated String
+            Router::getInstance().navigateTo("comic", pathParam);
+            Serial.println("Navigating to comic viewer with allocated path...");
         }
         else // 如果是普通目录
         {
@@ -226,11 +249,38 @@ bool FileBrowserPage::handleItemTouch(uint16_t x, uint16_t y)
             sdManager.enterDirectory(item.name);
             display(); // 重新绘制文件浏览器页面以显示新目录内容
         }
-        return true; // 触摸事件已处理
+        return true; // Directory touch event handled
     }
-    // 如果点击的是文件（当前逻辑下文件不可点击，直接返回 false）
-    // 未来可以扩展为打开文件，例如图片文件使用 ImageViewerPage
-    return false; // 文件点击事件未处理
+    else if (item.isText) // Handle text file clicks
+    {
+        Serial.print("Opening text file: ");
+        Serial.println(item.name);
+
+        // Build the full path
+        String fullPath = sdManager.getCurrentPath();
+        if (fullPath != "/") {
+            fullPath += "/";
+        }
+        fullPath += item.name;
+
+        Serial.print("Full path: ");
+        Serial.println(fullPath);
+
+        // Get or create TextViewerPage instance (assuming similar singleton/factory pattern)
+        // We need a way to get/create the text viewer page instance.
+        // Dynamically allocate a String object to hold the path
+        // The Router will be responsible for deleting this later
+        String* pathParam = new String(fullPath);
+
+        // Pass the pointer to the dynamically allocated String
+        Router::getInstance().navigateTo("text", pathParam);
+        Serial.println("Navigating to text viewer with allocated path...");
+        return true; // Text file touch event handled
+    } // End of else if (item.isText)
+    // Handle other file types (e.g., images) here if needed
+    // else if (item.isImage) { ... navigateTo("image", ...) ... }
+
+    return false; // File type not handled
 }
 
 // 处理导航按钮（返回、上一页、下一页）的触摸事件

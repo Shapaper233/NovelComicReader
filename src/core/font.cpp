@@ -2,20 +2,123 @@
 #include <SD.h>
 #include <ArduinoJson.h>
 #include <fcntl.h>
-#include <FS.h>
+// #include <FS.h> // Already included via font.h
+#include <map>      // Included via font.h now
+#include <list>     // Included via font.h now
+#include <string>   // Included via font.h now
+#include <utility>  // Included via font.h now
+#include <cstring>  // For memcpy
 #include "font.h"
 
-Font* Font::instance = nullptr;
+// Define a reasonable cache size (e.g., 50KB). Adjust as needed for your device's RAM.
+#define FONT_CACHE_MAX_SIZE_BYTES (25 * 1024)
+//for 50kb:1600 characters of 16x16 size 711 characters of 24x24 size 400 characters of 32x32 size(or a mix thereof).This should significantly improve performance by reducing SD card access.
 
-Font::Font() {
+Font *Font::instance = nullptr;
+
+Font::Font() : maxCacheSizeInBytes(FONT_CACHE_MAX_SIZE_BYTES), currentCacheSizeInBytes(0) {
     fontBuffer = nullptr;
     currentSize = 0;
     bufferSize = 0;
+    // Cache map and list are initialized automatically
 }
 
 Font::~Font() {
     clearBuffer();
+    clearMemoryCache(); // Ensure memory cache is cleared on destruction
 }
+
+// --- In-Memory Cache Implementation ---
+
+void Font::clearMemoryCache() {
+    for (auto const& [key, val] : cacheMap) {
+        free(val.first.bitmap); // Free the allocated bitmap memory
+    }
+    cacheMap.clear();
+    cacheLRUList.clear();
+    currentCacheSizeInBytes = 0;
+}
+
+// Tries to retrieve an entry from the cache. Returns pointer if found, nullptr otherwise.
+// Moves the found item to the front of the LRU list.
+Font::CacheEntry* Font::cacheGet(const CacheKey& key) {
+    auto it = cacheMap.find(key);
+    if (it == cacheMap.end()) {
+        return nullptr; // Not in cache
+    }
+
+    // Move the accessed item to the front of the LRU list
+    cacheLRUList.splice(cacheLRUList.begin(), cacheLRUList, it->second.second);
+    
+    // Return pointer to the CacheEntry data
+    return &(it->second.first);
+}
+
+// Evicts the least recently used item(s) until the cache is below its max size
+void Font::cacheEvict() {
+    while (currentCacheSizeInBytes > maxCacheSizeInBytes && !cacheLRUList.empty()) {
+        // Get the least recently used key (back of the list)
+        CacheKey lruKey = cacheLRUList.back();
+        
+        // Find the corresponding entry in the map
+        auto it = cacheMap.find(lruKey);
+        if (it != cacheMap.end()) {
+            // Free the bitmap memory
+            free(it->second.first.bitmap);
+            // Update current cache size
+            currentCacheSizeInBytes -= it->second.first.dataSize;
+            // Remove from map
+            cacheMap.erase(it);
+        }
+        // Remove from LRU list
+        cacheLRUList.pop_back();
+    }
+}
+
+// Adds a new bitmap to the cache
+void Font::cachePut(const CacheKey& key, const uint8_t* data, uint16_t charSize, size_t dataSize) {
+    // If the item is already in the cache, do nothing (or update if necessary, but get handles LRU update)
+    if (cacheMap.count(key)) {
+        // Optional: Could update LRU position here too, but cacheGet already does it.
+        return; 
+    }
+
+    // Check if adding this item exceeds the cache size limit
+    if (currentCacheSizeInBytes + dataSize > maxCacheSizeInBytes) {
+        cacheEvict(); // Evict old items to make space
+        // Re-check if eviction made enough space
+        if (currentCacheSizeInBytes + dataSize > maxCacheSizeInBytes) {
+             // Still not enough space even after eviction (maybe item is too large?)
+             // In this case, we simply don't cache it.
+             return; 
+        }
+    }
+
+    // Allocate memory for the bitmap copy in the cache
+    uint8_t* cachedBitmap = (uint8_t*)malloc(dataSize);
+    if (!cachedBitmap) {
+        return; // Allocation failed
+    }
+    memcpy(cachedBitmap, data, dataSize); // Copy the bitmap data
+
+    // Add the new item to the front of the LRU list
+    cacheLRUList.push_front(key);
+    
+    // Create the cache entry
+    CacheEntry entry;
+    entry.bitmap = cachedBitmap;
+    entry.size = charSize;
+    entry.dataSize = dataSize;
+
+    // Add to the map, storing the entry and an iterator to its position in the LRU list
+    cacheMap[key] = {entry, cacheLRUList.begin()};
+
+    // Update the current cache size
+    currentCacheSizeInBytes += dataSize;
+}
+
+// --- End In-Memory Cache Implementation ---
+
 
 Font& Font::getInstance() {
     if (!instance) {
@@ -24,6 +127,7 @@ Font& Font::getInstance() {
     return *instance;
 }
 
+// Clears the single temporary buffer used for SD loading
 void Font::clearBuffer() {
     if (fontBuffer) {
         free(fontBuffer);
@@ -197,12 +301,39 @@ bool Font::loadCharacter(const char* character, uint16_t size) {
     return true;
 }
 
+// Main function to get character bitmap. Checks memory cache first, then SD.
 uint8_t* Font::getCharacterBitmap(const char* character, uint16_t size) {
+    // Create the key for the cache lookup
+    CacheKey key = {std::string(character), size};
+
+    // 1. Check in-memory cache first
+    CacheEntry* cachedEntry = cacheGet(key);
+    if (cachedEntry) {
+        // Memory cache hit! Return the cached bitmap directly.
+        return cachedEntry->bitmap;
+    }
+
+    // 2. Memory cache miss: Load from SD card (using existing logic)
+    //    loadCharacter handles SD cache check and loading from main font file.
+    //    It loads the data into the temporary 'fontBuffer'.
     if (!loadCharacter(character, size)) {
+        // Failed to load from SD (neither cache nor main file)
         return nullptr;
     }
-    return fontBuffer;
+
+    // 3. Successfully loaded from SD into fontBuffer. Now add it to the memory cache.
+    //    'bufferSize' holds the size of the data loaded into fontBuffer.
+    if (fontBuffer && bufferSize > 0) {
+        cachePut(key, fontBuffer, size, bufferSize);
+    }
+
+    // 4. Return the pointer to the data in fontBuffer (which was just loaded).
+    //    Note: The data is ALSO now in the memory cache, but we return the
+    //    pointer from the temporary buffer for consistency with the old logic flow.
+    //    Subsequent calls for the same char/size should hit the memory cache.
+    return fontBuffer; 
 }
+
 
 size_t Font::utf8Length(const char* str) {
     size_t len = 0;

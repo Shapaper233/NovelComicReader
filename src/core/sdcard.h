@@ -9,7 +9,8 @@
 struct FileItem {
     String name;          // 文件/文件夹名称
     bool isDirectory;     // 是否是目录
-    bool isComic;        // 是否是漫画目录（包含.info文件）
+    bool isComic;         // 是否是漫画目录（包含.info文件）
+    bool isText;          // 是否是文本文件 (.txt)
 };
 
 class SDCard {

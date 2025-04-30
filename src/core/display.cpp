@@ -155,3 +155,22 @@ void Display::drawCenteredText(const char *text, uint16_t x, uint16_t y, uint16_
 
 // Removed drawFolder implementation
 // Removed drawButton implementation
+
+void Display::drawProgressBar(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t progress, uint16_t outlineColor, uint16_t barColor, uint16_t bgColor) {
+    // Clamp progress to 0-100
+    if (progress > 100) progress = 100;
+
+    // Draw outline
+    tft.drawRect(x, y, w, h, outlineColor);
+
+    // Calculate bar width
+    uint16_t barW = (w - 2) * progress / 100; // Subtract 2 for outline thickness
+
+    // Draw the progress bar fill
+    tft.fillRect(x + 1, y + 1, barW, h - 2, barColor);
+
+    // Draw the background fill for the remaining part
+    if (barW < (w - 2)) {
+        tft.fillRect(x + 1 + barW, y + 1, (w - 2) - barW, h - 2, bgColor);
+    }
+}

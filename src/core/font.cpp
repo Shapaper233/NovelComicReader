@@ -9,6 +9,7 @@
 #include <utility>  // Included via font.h now
 #include <cstring>  // For memcpy
 #include "font.h"
+#include "display.h" // Include Display header for progress bar
 
 // Define a reasonable cache size (e.g., 50KB). Adjust as needed for your device's RAM.
 #define FONT_CACHE_MAX_SIZE_BYTES (25 * 1024)
@@ -252,8 +253,49 @@ bool Font::loadFastFontCache() {
 
     // 6. Iterate through JSON entries and load data
     JsonArrayConst entries = doc.as<JsonArrayConst>(); // Use const view
+    size_t totalEntries = entries.size();
+    if (totalEntries == 0) {
+        Serial.println("Fast cache JSON is empty.");
+        binFile.close();
+        return true; // Not an error, just nothing to load
+    }
+
     size_t loadedCount = 0;
     size_t totalBytesRead = 0;
+    uint8_t currentProgress = 0;
+    uint8_t lastProgress = 0;
+
+    // Get display instance and dimensions for progress bar
+    Display& display = Display::getInstance();
+    uint16_t barX = 20;
+    uint16_t barY = display.height() - 30;
+    uint16_t barW = display.width() - 40;
+    uint16_t barH = 15;
+    // Define area for status text, higher above the progress bar
+    uint16_t statusX = barX;
+    uint16_t statusY = barY - 20; // Place it 20 pixels above the bar's top edge
+    uint16_t statusW = barW / 2; // Make status text area smaller
+    uint16_t statusH = 16;       // Height for clearing (font size 1 uses 16px height)
+
+    // Define area for the glyph, positioned above the status text, near the right
+    uint16_t glyphSizeMax = 32; // Assume max glyph size is 32x32 for clearing/positioning
+    uint16_t glyphX = barX + barW - glyphSizeMax - 5; // Position near the right edge
+    uint16_t glyphY = statusY - glyphSizeMax - 5; // Place glyph 5px above status text area
+    uint16_t glyphW = glyphSizeMax;
+    uint16_t glyphH = glyphSizeMax;
+
+
+    // Draw initial progress bar (0%)
+    display.drawProgressBar(barX, barY, barW, barH, 0);
+    // Clear status area initially
+    display.getTFT()->fillRect(statusX, statusY, statusW, statusH, TFT_BLACK);
+    // Clear glyph area initially
+    display.getTFT()->fillRect(glyphX, glyphY, glyphW, glyphH, TFT_BLACK);
+
+    // Time tracking for display updates
+    unsigned long lastUpdateTime = 0; // Initialize to 0 to force first update
+    const unsigned long UPDATE_INTERVAL_MS = 20;
+
 
     for (JsonObjectConst metaEntry : entries) {
         const char* character_cstr = metaEntry["char"];
@@ -312,7 +354,62 @@ bool Font::loadFastFontCache() {
         loadedCount++;
         totalBytesRead += dataSize;
 
+        // --- Conditional Display Update (every UPDATE_INTERVAL_MS) ---
+        unsigned long currentTime = millis();
+        if (currentTime - lastUpdateTime >= UPDATE_INTERVAL_MS) {
+
+            // --- Draw the actual glyph using Display::drawCharacter ---
+            // Clear previous glyph area (using max size for safety)
+            display.getTFT()->fillRect(glyphX, glyphY, glyphW, glyphH, TFT_BLACK);
+
+            // Calculate size multiplier relative to 16px base. Map 16->1, 24->2, 32->2.
+            uint8_t sizeMultiplier = (size > 16) ? 2 : 1; // Simplified mapping for visibility
+            uint16_t drawnGlyphSize = sizeMultiplier * 16; // Actual drawn width/height
+
+            // Calculate dynamic position based on drawn size for consistent alignment
+            uint16_t currentGlyphX = barX + barW - drawnGlyphSize - 5; // Right-align drawn glyph
+            uint16_t currentGlyphY = statusY - drawnGlyphSize - 5; // Position drawn glyph above status
+
+            // Draw the character using the standard method at the calculated dynamic position
+            // This might re-read from cache, but ensures correct drawing logic
+            display.drawCharacter(character.c_str(), currentGlyphX, currentGlyphY, sizeMultiplier, true);
+            // --- End glyph drawing ---
+
+
+            // Update status text (showing char, size, and count)
+            // Clear previous status text
+            display.getTFT()->fillRect(statusX, statusY, statusW, statusH, TFT_BLACK);
+            // Prepare status string (showing Unicode, size, and count)
+            uint32_t unicodeValue = utf8ToUnicode(character.c_str()); // Get Unicode code point
+            char statusBuffer[70]; // Slightly larger buffer for "U+XXXX" format
+            snprintf(statusBuffer, sizeof(statusBuffer), "Load: U+%04X(%u) (%zu/%zu)",
+                     unicodeValue, size, loadedCount, totalEntries); // Show U+Code(size) (count/total) - Use loadedCount directly
+            // Draw status text using small built-in font
+            display.getTFT()->setTextColor(TFT_WHITE, TFT_BLACK);
+            display.drawText(statusBuffer, statusX, statusY, 1, false); // size 1, useCustomFont=false
+
+
+            // Update progress bar
+            currentProgress = (loadedCount * 100) / totalEntries;
+            if (currentProgress > lastProgress) { // Only redraw if percentage changed
+                 display.drawProgressBar(barX, barY, barW, barH, currentProgress);
+                 lastProgress = currentProgress;
+            }
+
+            lastUpdateTime = currentTime; // Update time of last display refresh
+            // yield(); // Consider adding yield() here if updates cause blocking
+        }
+        // --- End Conditional Display Update ---
+
     } // End loop through JSON entries
+
+    // Ensure progress bar shows 100% at the end
+    display.drawProgressBar(barX, barY, barW, barH, 100);
+
+    // Clear status and glyph areas after finishing
+    display.getTFT()->fillRect(statusX, statusY, statusW, statusH, TFT_BLACK);
+    display.getTFT()->fillRect(glyphX, glyphY, glyphW, glyphH, TFT_BLACK); // Use max size for final clear
+
 
     // 7. Close binary file
     binFile.close();
@@ -548,6 +645,37 @@ uint8_t* Font::getCharacterBitmap(const char* character, uint16_t size) {
     //    pointer from the temporary buffer for consistency with the old logic flow.
     //    Subsequent calls for the same char/size should hit the memory cache.
     return fontBuffer; 
+}
+
+// Helper function to convert a UTF-8 character string to its Unicode code point
+// Returns 0 if the input is null or invalid UTF-8 start byte
+uint32_t Font::utf8ToUnicode(const char* utf8_char) {
+    if (!utf8_char || *utf8_char == '\0') {
+        return 0; // Invalid input
+    }
+
+    uint32_t unicode_val = 0;
+    unsigned char c1 = utf8_char[0];
+
+    if (c1 < 0x80) { // 1-byte sequence (ASCII)
+        unicode_val = c1;
+    } else if ((c1 & 0xE0) == 0xC0) { // 2-byte sequence
+        if ((utf8_char[1] & 0xC0) == 0x80) {
+            unicode_val = ((c1 & 0x1F) << 6) | (utf8_char[1] & 0x3F);
+        } else return 0; // Invalid sequence
+    } else if ((c1 & 0xF0) == 0xE0) { // 3-byte sequence
+        if (((utf8_char[1] & 0xC0) == 0x80) && ((utf8_char[2] & 0xC0) == 0x80)) {
+            unicode_val = ((c1 & 0x0F) << 12) | ((utf8_char[1] & 0x3F) << 6) | (utf8_char[2] & 0x3F);
+        } else return 0; // Invalid sequence
+    } else if ((c1 & 0xF8) == 0xF0) { // 4-byte sequence
+        if (((utf8_char[1] & 0xC0) == 0x80) && ((utf8_char[2] & 0xC0) == 0x80) && ((utf8_char[3] & 0xC0) == 0x80)) {
+            unicode_val = ((c1 & 0x07) << 18) | ((utf8_char[1] & 0x3F) << 12) | ((utf8_char[2] & 0x3F) << 6) | (utf8_char[3] & 0x3F);
+        } else return 0; // Invalid sequence
+    } else {
+        return 0; // Invalid start byte
+    }
+
+    return unicode_val;
 }
 
 

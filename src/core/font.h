@@ -94,6 +94,9 @@ public:
 
     // 获取UTF8字符串中的下一个字符
     static String getNextCharacter(const char *str, size_t &offset);
+
+    // Helper function to convert UTF-8 char string to Unicode code point
+    static uint32_t utf8ToUnicode(const char* utf8_char);
 };
 
 #endif // FONT_H

@@ -29,6 +29,7 @@ public:
     void drawText(const char* text, uint16_t x, uint16_t y, uint8_t size = 2, bool useCustomFont = true);
     void drawCenteredText(const char* text, uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t size = 2, bool useCustomFont = true);
     void drawCharacter(const char* character, uint16_t x, uint16_t y, uint8_t size, bool useCustomFont = true);
+    void drawProgressBar(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint8_t progress, uint16_t outlineColor = TFT_WHITE, uint16_t barColor = TFT_GREEN, uint16_t bgColor = TFT_BLACK);
     // Removed: void drawFolder(uint16_t x, uint16_t y, bool isComic = false);
     // Removed: void drawButton(const char* text, uint16_t x, uint16_t y, uint16_t w, uint16_t h, bool isActive = false);
 

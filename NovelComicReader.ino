@@ -46,8 +46,19 @@ void setup() {
         while (1) delay(100);  // 停止执行
     }
 
-    // Load fast font cache (after SD is confirmed working)
-    Font::getInstance().loadFastFontCache();
+    // Display loading message and load fast font cache
+    display.clear();
+    display.drawCenteredText("Loading Font Cache...", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,1); // Changed text
+    bool cacheLoaded = Font::getInstance().loadFastFontCache();
+    if (cacheLoaded) {
+        Serial.println("Fast cache loaded.");
+    } else {
+         Serial.println("Fast cache not loaded (or failed).");
+         // Optional: Display a message if loading failed or took time
+         // display.drawCenteredText("Cache Load Complete", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+         // delay(500); // Show message briefly
+    }
+    display.clear(); // Clear loading message/progress bar
     
     // 注册页面路由
     router.registerPage("browser", []() -> Page* { return createFileBrowserPage(); });

@@ -13,10 +13,10 @@
 
 /**
  * @brief ComicViewerPage 构造函数
- * 初始化显示管理器、SD 卡管理器引用，并将滚动偏移和总高度缓存清零。
+ * 初始化显示管理器、SD 卡管理器、触摸管理器引用，并将滚动偏移和总高度缓存清零。
  */
 ComicViewerPage::ComicViewerPage()
-    : displayManager(Display::getInstance()), sdManager(SDCard::getInstance()), scrollOffset(0), totalComicHeight(0)
+    : displayManager(Display::getInstance()), sdManager(SDCard::getInstance()), touchManager(Touch::getInstance()), scrollOffset(0), totalComicHeight(0)
 {
     Serial.println("ComicViewerPage constructor called");
 }
@@ -62,6 +62,12 @@ void ComicViewerPage::loadImages()
     totalComicHeight = 0; // 重置总高度
     Serial.print("Loading comic images from path: ");
     Serial.println(currentPath);
+
+    // --- Display Loading Message ---
+    displayManager.getTFT()->fillScreen(TFT_WHITE); // Clear screen
+    displayManager.drawCenteredText("Loading Comic...", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    Serial.println("Displayed loading message.");
+    // --- End Loading Message ---
 
     // 寻找从 1.bmp 开始的连续图片文件
     int index = 1;
@@ -148,8 +154,9 @@ void ComicViewerPage::loadImages()
  *   - 关闭文件。
  *   - 更新 yOffset，准备绘制下一张图片。
  * - 循环直到绘制完所有可见图片或超出屏幕底部。
+ * @return true if drawing was interrupted by touch, false otherwise.
  */
-void ComicViewerPage::drawContent()
+bool ComicViewerPage::drawContent()
 {
     // 用白色填充背景
     displayManager.getTFT()->fillScreen(TFT_WHITE);
@@ -159,7 +166,7 @@ void ComicViewerPage::drawContent()
     if (imageFiles.empty())
     {
         displayManager.drawCenteredText("No images found", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-        return;
+        return false; // Return false as drawing didn't complete (no images)
     }
 
     // 使用缓存的总高度
@@ -232,13 +239,23 @@ void ComicViewerPage::drawContent()
         delete[] rawBuffer; // Safe even if nullptr
         delete[] pixelBuffer; // Safe even if nullptr
         displayManager.drawCenteredText("Memory Error", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-        return; // Cannot proceed
+        return false; // Cannot proceed, drawing did not complete (but wasn't interrupted by touch)
     }
+
+    bool touchDetected = false; // Flag to track if touch interrupted drawing
 
     // --- 绘制可见图片 ---
     // 从 startImage 开始遍历，直到图片底部超出屏幕底部 (yOffset >= SCREEN_HEIGHT)
     for (int i = startImage; i < imageFiles.size() && yOffset < SCREEN_HEIGHT; i++)
     {
+        // --- Check for touch interrupt before processing each image ---
+        if (touchManager.isTouched()) {
+            Serial.println("Touch detected during drawContent (image loop), stopping draw.");
+            touchDetected = true;
+            break;
+        }
+        // --- End touch check ---
+
         Serial.print("Loading image: ");
         Serial.println(imageFiles[i]);
 
@@ -332,6 +349,14 @@ void ComicViewerPage::drawContent()
             // 循环读取，每次读取 BUFFER_ROWS 行，或者剩余行数（如果不足）
             for (int row = startY; row < startY + readHeight; )
             {
+                // --- Check for touch interrupt before reading each chunk ---
+                if (touchManager.isTouched()) {
+                    Serial.println("Touch detected during drawContent (chunk read loop), stopping draw.");
+                    touchDetected = true;
+                    break; // Exit the chunk reading loop for this image
+                }
+                // --- End touch check ---
+
                 // 计算本次要读取的行数
                 int rowsToRead = std::min(BUFFER_ROWS, (startY + readHeight) - row);
                 int bufferBytesToRead = rowsToRead * actualRowSize; // 本次要读取的总字节数
@@ -368,6 +393,14 @@ void ComicViewerPage::drawContent()
                 // 所以处理缓冲区时，需要从缓冲区尾部向前处理，或者调整指针计算
                 for (int chunkRowIndex = 0; chunkRowIndex < rowsToRead; ++chunkRowIndex)
                 {
+                    // --- Check for touch interrupt before processing each row ---
+                    if (touchManager.isTouched()) {
+                        Serial.println("Touch detected during drawContent (row process loop), stopping draw.");
+                        touchDetected = true;
+                        break; // Exit the row processing loop for this chunk
+                    }
+                    // --- End touch check ---
+
                     // 当前处理的行在图片中的实际行号
                     int currentRowInImage = firstRowInChunk + chunkRowIndex;
                     // 获取当前行数据在 rawBuffer 中的起始指针
@@ -400,20 +433,32 @@ void ComicViewerPage::drawContent()
                     }
                 }
                 // --- 结束处理缓冲区 ---
+                if (touchDetected) break; // Exit chunk loop if touch detected in row loop
+
                 // 移动到下一个块的起始行
                 row += rowsToRead;
-            }
+            } // End chunk reading loop
         }
         // --- 结束分块读取和绘制 ---
 
         file.close(); // 关闭当前图片文件
+
+        if (touchDetected) break; // Exit image loop if touch detected in chunk/row loop
+
         yOffset += height; // 更新屏幕 Y 坐标，准备绘制下一张图片
-    }
+    } // End image loop
     // --- 结束绘制所有可见图片 ---
 
     // --- Clean up dynamically allocated buffers ---
     delete[] rawBuffer;
     delete[] pixelBuffer;
+
+    if (touchDetected) {
+        Serial.println("DrawContent interrupted by touch.");
+        return true; // Indicate interruption
+    }
+
+    return false; // Drawing completed without interruption
 }
 
 
@@ -447,10 +492,20 @@ void ComicViewerPage::scrollDisplay(int scrollDelta)
     tft->fillScreen(TFT_WHITE); // 清空屏幕
     // 调用 drawNewArea 绘制整个屏幕 (y=0, h=SCREEN_HEIGHT)
     // drawNewArea 内部会根据当前的 scrollOffset 来绘制正确的内容
-    drawNewArea(0, SCREEN_HEIGHT);
+    if (drawNewArea(0, SCREEN_HEIGHT)) {
+        // If drawing was interrupted, handle the touch immediately
+        handleTouchInterrupt();
+    }
     // --- 结束临时测试 ---
 
     /* --- 原始优化滚动逻辑 (注释掉以进行测试) ---
+    ... [omitted original scroll logic for brevity] ...
+    // --- 绘制新暴露区域的内容 ---
+    Serial.println("Drawing new area content...");
+    if (drawNewArea(newAreaY, newAreaHeight)) {
+        // If drawing was interrupted, handle the touch immediately
+        handleTouchInterrupt();
+    }
     // 计算屏幕复制操作的参数
     int copyHeight = SCREEN_HEIGHT - abs(scrollDelta); // 需要复制的高度
     int srcY, dstY; // 源 Y 坐标, 目标 Y 坐标
@@ -531,15 +586,16 @@ void ComicViewerPage::scrollDisplay(int scrollDelta)
  *     - 在将像素行推送到屏幕前，检查计算出的当前屏幕 Y 坐标 (currentScreenY) 是否在目标绘制区域 [y, y + h) 内。
  *     - 关闭文件。
  *   - 如果当前图片的起始 Y 坐标 (imgStartY) 已经超出了需要绘制的范围 (endAbsoluteY)，则可以提前结束遍历。
+ * @return true if drawing was interrupted by touch, false otherwise.
  */
-void ComicViewerPage::drawNewArea(int y, int h)
+bool ComicViewerPage::drawNewArea(int y, int h)
 {
     Serial.print("Drawing new area: y=");
     Serial.print(y);
     Serial.print(", h=");
     Serial.println(h);
 
-    if (imageFiles.empty()) return; // 没有图片可绘制
+    if (imageFiles.empty()) return false; // 没有图片可绘制
 
     // --- 计算绝对 Y 坐标范围 ---
     // 需要绘制的区域在整个漫画长条中的起始和结束 Y 坐标
@@ -582,8 +638,18 @@ void ComicViewerPage::drawNewArea(int y, int h)
     }
     // --- 结束定义缓冲区 ---
 
+    bool touchDetected = false; // Flag for touch interruption
+
     // --- 遍历图片，绘制与目标区域重叠的部分 ---
     for (size_t i = 0; i < imageFiles.size(); ++i) {
+        // --- Check for touch interrupt before processing each image ---
+        if (touchManager.isTouched()) {
+            Serial.println("Touch detected during drawNewArea (image loop), stopping draw.");
+            touchDetected = true;
+            break;
+        }
+        // --- End touch check ---
+
         // 获取图片信息
         int imgHeight = (i < imageHeights.size()) ? imageHeights[i] : SCREEN_HEIGHT; // 缓存高度
         int imgStartY = (i < startPositions.size()) ? startPositions[i] : -1; // 起始绝对 Y
@@ -638,6 +704,14 @@ void ComicViewerPage::drawNewArea(int y, int h)
             {
                 for (int row = drawStartRowInImage; row < drawEndRowInImage; )
                 {
+                    // --- Check for touch interrupt before reading each chunk ---
+                    if (touchManager.isTouched()) {
+                        Serial.println("Touch detected during drawNewArea (chunk read loop), stopping draw.");
+                        touchDetected = true;
+                        break; // Exit chunk loop for this image
+                    }
+                    // --- End touch check ---
+
                     int rowsToRead = std::min(BUFFER_ROWS, drawEndRowInImage - row);
                     int bufferBytesToRead = rowsToRead * rowSize;
                     int firstRowInChunk = row;
@@ -658,6 +732,14 @@ void ComicViewerPage::drawNewArea(int y, int h)
                     // 处理缓冲区中的每一行
                     for (int chunkRowIndex = 0; chunkRowIndex < rowsToRead; ++chunkRowIndex)
                     {
+                        // --- Check for touch interrupt before processing each row ---
+                        if (touchManager.isTouched()) {
+                            Serial.println("Touch detected during drawNewArea (row process loop), stopping draw.");
+                            touchDetected = true;
+                            break; // Exit row loop for this chunk
+                        }
+                        // --- End touch check ---
+
                         int currentRowInImage = firstRowInChunk + chunkRowIndex;
                         uint8_t* currentRowPtr = rawBuffer + (rowsToRead - 1 - chunkRowIndex) * rowSize;
 
@@ -677,21 +759,26 @@ void ComicViewerPage::drawNewArea(int y, int h)
                             displayManager.getTFT()->setSwapBytes(true);
                             displayManager.getTFT()->pushImage(0, currentScreenY, width, 1, pixelBuffer);
                         }
-                    }
+                    } // End row processing loop
+
+                    if (touchDetected) break; // Exit chunk loop if touch detected in row loop
+
                     row += rowsToRead; // 移动到下一个块
-                }
+                } // End chunk reading loop
             }
             // --- 结束分块绘制 ---
             file.close(); // 关闭文件
         }
         // --- 结束处理重叠图片 ---
 
+        if (touchDetected) break; // Exit image loop if touch detected
+
         // --- 优化：如果当前图片已经完全在目标绘制区域下方，停止遍历 ---
         if (imgStartY >= endAbsoluteY) {
              Serial.println("Image is past the target range, stopping.");
              break;
         }
-    }
+    } // End image loop
     // --- 结束遍历所有图片 ---
 
     // --- Clean up dynamically allocated buffers ---
@@ -699,7 +786,13 @@ void ComicViewerPage::drawNewArea(int y, int h)
     delete[] rawBuffer;
     delete[] pixelBuffer;
 
-    Serial.println("Finished drawing new area.");
+    if (touchDetected) {
+        Serial.println("DrawNewArea interrupted by touch.");
+        return true; // Indicate interruption
+    } else {
+        Serial.println("Finished drawing new area.");
+        return false; // Indicate successful completion
+    }
 }
 
 
@@ -734,7 +827,8 @@ bool ComicViewerPage::handleScrollGesture(uint16_t x, uint16_t y)
     if (currentTime - lastTapTime < 500)
     {
         Serial.println("Double tap detected, returning to browser");
-        Router::getInstance().goBack(); // 返回到上一个页面（文件浏览器）
+        //Router::getInstance().goBack(); // 返回到上一个页面（文件浏览器）
+        //不返回了，不然太难用了
         lastTapTime = 0; // 重置时间，避免连续触发
         return true; // 事件已处理
     }
@@ -788,6 +882,24 @@ bool ComicViewerPage::handleScrollGesture(uint16_t x, uint16_t y)
 
 
 /**
+ * @brief Helper function to process a touch event that interrupted drawing.
+ * Reads the touch point and calls the main handleTouch logic.
+ */
+void ComicViewerPage::handleTouchInterrupt() {
+    uint16_t tx, ty;
+    // Attempt to get the touch point that caused the interrupt
+    if (touchManager.getPoint(tx, ty)) {
+        Serial.print("Handling touch interrupt at: (");
+        Serial.print(tx); Serial.print(", "); Serial.print(ty); Serial.println(")");
+        handleTouch(tx, ty); // Process the touch using the standard handler
+    } else {
+        Serial.println("Could not get touch point after interrupt.");
+        // Optionally, trigger a redraw or other recovery action if needed
+    }
+}
+
+
+/**
  * @brief 设置当前要显示的漫画所在的目录路径。
  * 会重置滚动偏移，并调用 loadImages() 重新加载该目录下的图片。
  *
@@ -813,7 +925,10 @@ void ComicViewerPage::display()
     Serial.print("Display called, image count: ");
     Serial.println(imageFiles.size());
     // 绘制内容（会根据当前的 scrollOffset 绘制）
-    drawContent();
+    if (drawContent()) {
+        // If drawing was interrupted, handle the touch immediately
+        handleTouchInterrupt();
+    }
 }
 
 /**

@@ -5,14 +5,15 @@
 #include <vector>    // 包含 std::vector 模板类
 
 // 前向声明 (Forward Declarations)
-// 因为 FileBrowserPage 引用了 ComicViewerPage*，需要提前声明
-class ComicViewerPage;
 class Page; // Forward declare Page for Router
+// Forward declaration for TextViewerPage (defined in text_viewer_page.h)
+class TextViewerPage; // Keep this if needed elsewhere, or move if possible
 
 // 包含项目内其他模块的头文件
 #include "../core/router.h"    // 页面路由系统
 #include "../core/display.h"   // 显示管理 (封装 TFT_eSPI)
 #include "../core/sdcard.h"    // SD 卡文件系统管理
+#include "../core/touch.h"     // 触摸管理
 
 // 页面基类 (Moved definition before FileBrowserPage)
 class Page
@@ -145,6 +146,7 @@ class ComicViewerPage : public Page {
 private:
     Display& displayManager; // 显示管理器引用
     SDCard& sdManager;       // SD 卡管理器引用
+    Touch& touchManager;     // 触摸管理器引用
     String currentPath;      // 当前打开的漫画目录路径
     int scrollOffset;        // 当前垂直滚动偏移量 (从漫画顶部开始的像素)
     std::vector<String> imageFiles; // 漫画图片文件路径列表 (e.g., "1.bmp", "2.bmp")
@@ -159,8 +161,9 @@ private:
 
     /**
      * @brief 绘制当前视口的漫画内容。
+     * @return true if drawing was interrupted by touch, false otherwise.
      */
-    void drawContent();
+    bool drawContent();
 
     /**
      * @brief 处理滚动触摸手势和双击返回。
@@ -181,8 +184,14 @@ private:
      * @brief 绘制屏幕上新暴露的区域。
      * @param y 新区域的屏幕起始 Y 坐标
      * @param h 新区域的高度
+     * @return true if drawing was interrupted by touch, false otherwise.
      */
-    void drawNewArea(int y, int h);
+    bool drawNewArea(int y, int h);
+
+    /**
+     * @brief Helper function to process a touch event that interrupted drawing.
+     */
+    void handleTouchInterrupt();
 
 public:
     /**

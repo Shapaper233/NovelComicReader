@@ -1,52 +1,58 @@
-#ifndef TOUCH_H
+#ifndef TOUCH_H // 防止头文件被重复包含
 #define TOUCH_H
 
-#include <XPT2046_Touchscreen.h> // Touchscreen library
-#include <SPI.h>                 // Required by XPT2046 library
-#include "../config/config.h"    // For pin definitions and calibration values
+#include <XPT2046_Touchscreen.h> // 包含 XPT2046 触摸屏库
+#include <SPI.h>                 // 包含 SPI 库 (XPT2046 库需要)
+#include "../config/config.h"    // 包含项目配置文件，用于引脚定义和校准值
 
 /**
- * @brief Singleton class for managing the XPT2046 touchscreen.
- * Handles initialization, reading touch status, and getting mapped coordinates.
+ * @brief 管理 XPT2046 触摸屏的单例类。
+ * 处理初始化、读取触摸状态以及获取映射后的坐标。
  */
 class Touch {
 private:
-    XPT2046_Touchscreen ts;     // Instance of the touchscreen library
-    SPIClass touchSPI;          // Dedicated SPI bus instance for touch (if needed, e.g., VSPI)
-    bool initialized;           // Flag to track if begin() has been called
-    uint16_t lastX, lastY;      // Stores the last successfully read and mapped coordinates
+    XPT2046_Touchscreen ts;     // 触摸屏库的实例对象
+    SPIClass touchSPI;          // 触摸专用的 SPI 总线实例 (如果需要，例如 VSPI)
+    bool initialized;           // 标记 begin() 是否已被调用并成功初始化
+    uint16_t lastX, lastY;      // 存储最后一次成功读取并映射的坐标
 
-    // Private constructor for Singleton pattern
+    /**
+     * @brief 私有构造函数 (用于单例模式)。
+     * 初始化触摸屏库实例，传入 CS 引脚和 SPI 总线实例。
+     */
     Touch();
-    static Touch* instance;     // Singleton instance pointer
+    static Touch* instance;     // 指向 Touch 类单例实例的指针
 
 public:
-    // Delete copy constructor and assignment operator
+    // 删除拷贝构造函数和赋值操作符，防止复制单例实例
     Touch(const Touch&) = delete;
     Touch& operator=(const Touch&) = delete;
 
-    // Get the singleton instance
+    /**
+     * @brief 获取 Touch 类的单例实例。
+     * @return Touch 类的引用。
+     */
     static Touch& getInstance();
 
     /**
-     * @brief Initializes the SPI bus and the touchscreen controller.
-     * Must be called once in setup().
+     * @brief 初始化 SPI 总线和触摸屏控制器。
+     * 必须在 setup() 函数中调用一次。
      */
     void begin();
 
     /**
-     * @brief Checks if the touchscreen is currently being pressed.
-     * @return true if touched, false otherwise.
+     * @brief 检查触摸屏当前是否被按下。
+     * @return 如果被触摸返回 true，否则返回 false。
      */
     bool isTouched();
 
     /**
-     * @brief Reads the current touch coordinates and maps them to screen coordinates.
-     * Uses calibration values defined in config.h.
-     * @param x Reference to store the mapped X coordinate.
-     * @param y Reference to store the mapped Y coordinate.
-     * @return true if a touch was detected and coordinates were successfully read and mapped.
-     * @return false if not touched or an error occurred.
+     * @brief 读取当前的触摸坐标，并将其映射到屏幕坐标。
+     * 使用在 config.h 中定义的校准值。
+     * @param x 用于存储映射后 X 坐标的引用。
+     * @param y 用于存储映射后 Y 坐标的引用。
+     * @return 如果检测到触摸并且成功读取和映射了坐标，则返回 true。
+     * @return 如果未触摸或发生错误，则返回 false。
      */
     bool getPoint(uint16_t& x, uint16_t& y);
 };

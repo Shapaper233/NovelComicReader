@@ -5,6 +5,7 @@
 #include "src/pages/pages.h" // Includes base Page and factory declarations
 #include "src/pages/text_viewer_page.h" // Include full definition for TextViewerPage
 #include "src/core/touch.h"   // Include the new Touch class header
+#include "src/core/font.h"    // Include Font class header
 #include <SPI.h>              // Re-add for direct access
 #include <XPT2046_Touchscreen.h> // Re-add for direct access (needed by Touch class indirectly)
 #include <TFT_eSPI.h>         // Re-add for direct access
@@ -44,6 +45,9 @@ void setup() {
         display.drawCenteredText("SD Card Error!", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
         while (1) delay(100);  // 停止执行
     }
+
+    // Load fast font cache (after SD is confirmed working)
+    Font::getInstance().loadFastFontCache();
     
     // 注册页面路由
     router.registerPage("browser", []() -> Page* { return createFileBrowserPage(); });

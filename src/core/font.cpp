@@ -16,6 +16,11 @@
 
 Font *Font::instance = nullptr;
 
+// --- Fast Cache File Paths (Definition) ---
+const char* Font::FAST_CACHE_BIN_PATH = "/font_data/fast.font";
+const char* Font::FAST_CACHE_JSON_PATH = "/font_data/fast.json";
+// --- End Fast Cache File Paths ---
+
 Font::Font() : maxCacheSizeInBytes(FONT_CACHE_MAX_SIZE_BYTES), currentCacheSizeInBytes(0) {
     fontBuffer = nullptr;
     currentSize = 0;
@@ -118,6 +123,205 @@ void Font::cachePut(const CacheKey& key, const uint8_t* data, uint16_t charSize,
 }
 
 // --- End In-Memory Cache Implementation ---
+
+
+// --- Fast Cache Implementation ---
+
+bool Font::saveFastFontCache() {
+    Serial.println("Saving fast font cache..."); // Debug message
+
+    // Ensure /font_data exists
+    if (!SD.exists("/font_data")) {
+        if (!SD.mkdir("/font_data")) {
+             Serial.println("Failed to create /font_data directory.");
+             return false;
+        }
+    }
+
+    // 1. Open JSON file for writing metadata
+    File jsonFile = SD.open(FAST_CACHE_JSON_PATH, FILE_WRITE);
+    if (!jsonFile) {
+        Serial.println("Failed to open fast.json for writing.");
+        return false;
+    }
+
+    // 2. Open binary file for writing bitmap data
+    File binFile = SD.open(FAST_CACHE_BIN_PATH, FILE_WRITE);
+     if (!binFile) {
+        Serial.println("Failed to open fast.font for writing.");
+        jsonFile.close(); // Close the already opened json file
+        return false;
+    }
+
+    // 3. Prepare JSON document
+    // Estimate JSON size: ~50 bytes per entry (char, size, offset, dataSize, overhead)
+    // Max entries could be maxCacheSizeInBytes / smallest_char_data_size
+    // Example: 25KB cache / 32 bytes (16x16) = ~800 entries. 800 * 50 = 40KB JSON.
+    // Use a dynamic document or increase static size if needed. Let's try 16KB for now.
+    StaticJsonDocument<16384> doc;
+    JsonArray entries = doc.to<JsonArray>();
+    size_t currentOffset = 0;
+
+    // 4. Iterate through the in-memory cache map
+    for (const auto& [key, valuePair] : cacheMap) {
+        const std::string& character = key.first;
+        uint16_t size = key.second;
+        const CacheEntry& entry = valuePair.first;
+
+        // Write bitmap data to binary file
+        size_t written = binFile.write(entry.bitmap, entry.dataSize);
+        if (written != entry.dataSize) {
+            Serial.printf("Error writing bitmap for %s (%d) to fast.font\n", character.c_str(), size);
+            binFile.close();
+            jsonFile.close();
+            SD.remove(FAST_CACHE_BIN_PATH); // Clean up potentially corrupted files
+            SD.remove(FAST_CACHE_JSON_PATH);
+            return false;
+        }
+
+        // Add metadata entry to JSON
+        JsonObject metaEntry = entries.createNestedObject();
+        metaEntry["char"] = character; // ArduinoJson handles std::string
+        metaEntry["size"] = size;
+        metaEntry["offset"] = currentOffset;
+        metaEntry["dataSize"] = entry.dataSize;
+
+        currentOffset += entry.dataSize; // Update offset for the next entry
+    }
+
+    // 5. Serialize JSON to file
+    if (serializeJson(doc, jsonFile) == 0) {
+        Serial.println("Failed to write to fast.json.");
+        binFile.close();
+        jsonFile.close();
+        SD.remove(FAST_CACHE_BIN_PATH); // Clean up potentially corrupted files
+        SD.remove(FAST_CACHE_JSON_PATH);
+        return false;
+    }
+
+    // 6. Close files
+    jsonFile.close();
+    binFile.close();
+
+    Serial.printf("Fast font cache saved successfully. %d entries, %d bytes.\n", cacheMap.size(), currentOffset);
+    return true;
+}
+
+
+bool Font::loadFastFontCache() {
+    Serial.println("Loading fast font cache...");
+
+    // 1. Check if cache files exist
+    if (!SD.exists(FAST_CACHE_JSON_PATH) || !SD.exists(FAST_CACHE_BIN_PATH)) {
+        Serial.println("Fast cache files not found.");
+        return false; // Not an error, just no cache to load
+    }
+
+    // 2. Open JSON file for reading
+    File jsonFile = SD.open(FAST_CACHE_JSON_PATH, FILE_READ);
+    if (!jsonFile) {
+        Serial.println("Failed to open fast.json for reading.");
+        return false;
+    }
+
+    // 3. Deserialize JSON
+    // Use DynamicJsonDocument for flexibility, or ensure static size matches save size.
+    // Let's stick with static for now, assuming 16KB is enough.
+    StaticJsonDocument<16384> doc;
+    DeserializationError error = deserializeJson(doc, jsonFile);
+    jsonFile.close(); // Close JSON file after reading
+
+    if (error) {
+        Serial.print("Failed to parse fast.json: ");
+        Serial.println(error.c_str());
+        SD.remove(FAST_CACHE_BIN_PATH); // Clean up potentially corrupt cache
+        SD.remove(FAST_CACHE_JSON_PATH);
+        return false;
+    }
+
+    // 4. Open binary file for reading bitmap data
+    File binFile = SD.open(FAST_CACHE_BIN_PATH, FILE_READ);
+     if (!binFile) {
+        Serial.println("Failed to open fast.font for reading.");
+        SD.remove(FAST_CACHE_JSON_PATH); // JSON was ok, but bin file missing/corrupt
+        return false;
+    }
+
+    // 5. Clear existing memory cache before loading
+    clearMemoryCache();
+
+    // 6. Iterate through JSON entries and load data
+    JsonArrayConst entries = doc.as<JsonArrayConst>(); // Use const view
+    size_t loadedCount = 0;
+    size_t totalBytesRead = 0;
+
+    for (JsonObjectConst metaEntry : entries) {
+        const char* character_cstr = metaEntry["char"];
+        uint16_t size = metaEntry["size"];
+        size_t offset = metaEntry["offset"];
+        size_t dataSize = metaEntry["dataSize"];
+
+        if (!character_cstr || size == 0 || dataSize == 0) {
+            Serial.println("Skipping invalid entry in fast.json");
+            continue;
+        }
+
+        std::string character(character_cstr);
+        CacheKey key = {character, size};
+
+        // Check if already loaded (shouldn't happen with clearMemoryCache)
+        if (cacheMap.count(key)) {
+            continue;
+        }
+
+        // Check if adding this item would exceed cache limits
+        if (currentCacheSizeInBytes + dataSize > maxCacheSizeInBytes) {
+             Serial.printf("Fast cache load exceeds memory limit (%d + %d > %d). Stopping load.\n",
+                           currentCacheSizeInBytes, dataSize, maxCacheSizeInBytes);
+             break; // Stop loading further entries
+        }
+
+        // Allocate memory for the bitmap
+        uint8_t* bitmapData = (uint8_t*)malloc(dataSize);
+        if (!bitmapData) {
+            Serial.printf("Memory allocation failed for %s (%d) during fast cache load.\n", character.c_str(), size);
+            continue; // Skip this entry, try others
+        }
+
+        // Seek and read bitmap data from binary file
+        if (!binFile.seek(offset)) {
+             Serial.printf("Seek failed in fast.font for %s (%d) at offset %d.\n", character.c_str(), size, offset);
+             free(bitmapData);
+             continue; // Skip this entry
+        }
+        size_t bytesRead = binFile.read(bitmapData, dataSize);
+        if (bytesRead != dataSize) {
+            Serial.printf("Read failed in fast.font for %s (%d). Expected %d, got %d.\n", character.c_str(), size, dataSize, bytesRead);
+            free(bitmapData);
+            continue; // Skip this entry
+        }
+
+        // Add to memory cache (manually, similar to cachePut but avoids checks/eviction)
+        cacheLRUList.push_front(key); // Add to front (most recently used)
+        CacheEntry entry;
+        entry.bitmap = bitmapData;
+        entry.size = size;
+        entry.dataSize = dataSize;
+        cacheMap[key] = {entry, cacheLRUList.begin()};
+        currentCacheSizeInBytes += dataSize;
+        loadedCount++;
+        totalBytesRead += dataSize;
+
+    } // End loop through JSON entries
+
+    // 7. Close binary file
+    binFile.close();
+
+    Serial.printf("Fast font cache loaded successfully. %d entries, %d bytes.\n", loadedCount, totalBytesRead);
+    return true;
+}
+
+// --- End Fast Cache Implementation ---
 
 
 Font& Font::getInstance() {
@@ -322,6 +526,16 @@ uint8_t* Font::getCharacterBitmap(const char* character, uint16_t size) {
         // Failed to load from SD (neither cache nor main file)
         return nullptr;
     }
+
+    // --- Fast Cache Trigger ---
+    // Increment counter since we loaded from SD (either cache file or main file)
+    fontsReadFromSDCounter++;
+    if (fontsReadFromSDCounter >= SAVE_CACHE_INTERVAL) {
+        saveFastFontCache(); // Attempt to save the cache
+        fontsReadFromSDCounter = 0; // Reset counter regardless of save success
+    }
+    // --- End Fast Cache Trigger ---
+
 
     // 3. Successfully loaded from SD into fontBuffer. Now add it to the memory cache.
     //    'bufferSize' holds the size of the data loaded into fontBuffer.

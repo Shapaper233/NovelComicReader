@@ -12,6 +12,11 @@
 #include "../core/touch.h"    // Touch manager
 #include "../config/config.h" // Screen dimensions etc.
 
+// Constants (moved INDEX_INTERVAL here for clarity)
+const int INDEX_INTERVAL = 100;  // Store position every 100 lines
+
+// NOTE: CacheHeader and CacheIndexEntry structs removed as we are moving to a unified JSON cache.
+
 class TextViewerPage : public Page
 {
 private:
@@ -19,10 +24,13 @@ private:
     Font &fontManager;
     Touch &touchManager;       // Reference to Touch singleton
     String filePath;           // Path to the text file
+    String cacheFilePath;      // Path to the cache file (e.g., file.txt.cacheinfo)
+    bool useCache;             // Flag to indicate if loading from cache is intended
     // std::vector<String> lines; // No longer storing all lines
     // std::vector<size_t> lineStartPositions; // REMOVED: To save memory, avoid storing all positions
     std::map<int, size_t> lineIndex; // Partial index: line number -> file position
-    const int INDEX_INTERVAL = 100;  // Store position every 100 lines
+    std::vector<int> bookmarks;      // Stores line numbers of manually added bookmarks
+    std::vector<int> detectedBookmarks; // Stores line numbers of automatically detected bookmarks (%书签标志%)
 
     int currentScrollLine;     // Index of the top visible line
     int totalLines;            // Total number of wrapped lines (calculated once)
@@ -38,8 +46,15 @@ private:
     void drawScrollbar();          // Draws the scrollbar
     void handleScroll(int touchY); // Handles scrolling based on touch Y
     void calculateLayout();        // Calculates linesPerPage and lineHeight
+    // Updated to accept current file size for validation against cache
+    bool loadMetadataFromCache(size_t currentOriginalFileSize);
+    void saveMetadataToCache();    // Saves calculated metadata (index, bookmarks) to the cache file
+    void toggleBookmark();         // Adds or removes a bookmark at the current line
+    void goToPrevBookmark();       // Jumps to the previous bookmark
+    void goToNextBookmark();       // Jumps to the next bookmark
     // Updated to show size, line count, and ETC during loading
     void updateLoadingProgress(size_t currentBytes, size_t totalBytes, int currentLineCount, unsigned long elapsedMillis);
+
 
 public:
     TextViewerPage();

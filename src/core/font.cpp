@@ -12,7 +12,7 @@
 #include "display.h" // 包含 Display 头文件，用于显示加载进度条
 
 // 定义内存缓存的最大大小 (例如 25KB)。根据设备的 RAM 进行调整。
-#define FONT_CACHE_MAX_SIZE_BYTES (25 * 1024)
+#define FONT_CACHE_MAX_SIZE_BYTES (40 * 1024)
 // 备注：50KB 缓存大约可存储: 1600 个 16x16 字符, 711 个 24x24 字符, 400 个 32x32 字符 (或混合)。
 // 这应能通过减少 SD 卡访问显著提高性能。
 

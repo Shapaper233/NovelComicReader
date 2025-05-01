@@ -505,17 +505,26 @@ bool ComicViewerPage::drawContent()
 
         // Calculate thumb position
         int maxScrollOffset = totalComicHeight - SCREEN_HEIGHT;
-        int thumbY = (int)((float)scrollOffset / maxScrollOffset * (SCREEN_HEIGHT - thumbHeight));
+        // Prevent division by zero if maxScrollOffset is 0 (shouldn't happen if totalComicHeight > SCREEN_HEIGHT, but good practice)
+        int thumbY = (maxScrollOffset > 0) ? (int)((float)scrollOffset / maxScrollOffset * (SCREEN_HEIGHT - thumbHeight)) : 0;
         thumbY = std::max(0, std::min(thumbY, SCREEN_HEIGHT - thumbHeight)); // Clamp position
 
         // Draw scroll bar track
         displayManager.getTFT()->fillRect(scrollBarX, 0, scrollBarWidth, SCREEN_HEIGHT, scrollBarColor);
         // Draw thumb
         displayManager.getTFT()->fillRect(scrollBarX, thumbY, scrollBarWidth, thumbHeight, thumbColor);
-        Serial.print("Drew scrollbar. Thumb Y: ");
+        Serial.print("Drew scrollbar in drawContent. Thumb Y: "); // Clarified log source
         Serial.print(thumbY);
         Serial.print(", Thumb H: ");
         Serial.println(thumbHeight);
+    }
+    else // Added else block for debugging
+    {
+        Serial.print("Skipping scrollbar draw in drawContent. totalComicHeight (");
+        Serial.print(totalComicHeight);
+        Serial.print(") <= SCREEN_HEIGHT (");
+        Serial.print(SCREEN_HEIGHT);
+        Serial.println(")");
     }
     // --- End Scroll Bar ---
 
@@ -548,76 +557,26 @@ void ComicViewerPage::scrollDisplay(int scrollDelta)
     if (scrollDelta == 0)
         return; // 无需滚动
 
-    // --- 临时测试：跳过屏幕复制，直接清屏并重绘整个可见区域 ---
-    // 这有助于验证 drawNewArea 是否能正确绘制任意区域
-    Serial.println("TEMPORARY TEST: Clearing screen and redrawing full area.");
-    tft->fillScreen(TFT_WHITE); // 清空屏幕
-    // 调用 drawNewArea 绘制整个屏幕 (y=0, h=SCREEN_HEIGHT)
-    // drawNewArea 内部会根据当前的 scrollOffset 来绘制正确的内容
+    // --- Reverted to Full Redraw Logic (as requested due to bugs in optimized version) ---
+    Serial.println("Using full screen redraw for scrolling (optimized version disabled).");
+    tft->fillScreen(TFT_WHITE); // Clear the entire screen
+    // Call drawNewArea to redraw the entire visible content based on the new scrollOffset
     renderingInterrupted = drawNewArea(0, SCREEN_HEIGHT); // Check return value
-    // --- 结束临时测试 ---
-
-    /* --- 原始优化滚动逻辑 (注释掉以进行测试) ---
-    ... [omitted original scroll logic for brevity] ...
-    // --- 绘制新暴露区域的内容 ---
-    Serial.println("Drawing new area content...");
-    // Call drawNewArea, ignore return value for now
-    drawNewArea(newAreaY, newAreaHeight);
-    ... [omitted original scroll logic for brevity] ...
-    // --- 绘制新暴露区域的内容 ---
-    Serial.println("Drawing new area content...");
-    if (drawNewArea(newAreaY, newAreaHeight)) {
-        // If drawing was interrupted, handle the touch immediately
-        handleTouchInterrupt();
+    if (renderingInterrupted) {
+         Serial.println("scrollDisplay (full redraw): drawNewArea was interrupted.");
     }
-    // 计算屏幕复制操作的参数
-    int copyHeight = SCREEN_HEIGHT - abs(scrollDelta); // 需要复制的高度
-    int srcY, dstY; // 源 Y 坐标, 目标 Y 坐标
+    // --- End Full Redraw Logic ---
 
-    if (scrollDelta > 0) { // 向下滚动 (内容上移)
-        srcY = scrollDelta; // 从 scrollDelta 行开始读
-        dstY = 0;           // 写到第 0 行
-    } else { // 向上滚动 (内容下移)
-        srcY = 0;           // 从第 0 行开始读
-        dstY = -scrollDelta; // 写到 -scrollDelta 行 (scrollDelta 是负数)
+    /* --- Original Optimized Scroll Logic (Commented Out) ---
+    // Calculate screen copy parameters
+    int copyHeight = SCREEN_HEIGHT - abs(scrollDelta); // Height of the area to copy
+    int srcY, dstY; // Source Y, Destination Y
+    // ... [rest of optimized logic omitted for brevity] ...
+    renderingInterrupted = drawNewArea(newAreaY, newAreaHeight);
+    if (renderingInterrupted) {
+         Serial.println("scrollDisplay (optimized): drawNewArea was interrupted.");
     }
-
-    // 执行屏幕复制 (使用行缓冲)
-    Serial.println("Performing screen copy...");
-    uint16_t rowBuffer[SCREEN_WIDTH]; // 用于读写一行的缓冲区
-
-    if (scrollDelta > 0) { // 向下滚动，从下往上复制，避免覆盖未读数据
-        for (int y = copyHeight - 1; y >= 0; --y) {
-            tft->readRect(0, srcY + y, SCREEN_WIDTH, 1, rowBuffer); // 读取源行
-            tft->pushImage(0, dstY + y, SCREEN_WIDTH, 1, rowBuffer); // 写入目标行
-        }
-    } else { // 向上滚动，从上往下复制
-        for (int y = 0; y < copyHeight; ++y) {
-            tft->readRect(0, srcY + y, SCREEN_WIDTH, 1, rowBuffer);
-            tft->pushImage(0, dstY + y, SCREEN_WIDTH, 1, rowBuffer);
-        }
-    }
-    Serial.println("Screen copy finished.");
-
-    // --- 清空新暴露的区域 ---
-    int newAreaY, newAreaHeight;
-    if (scrollDelta > 0) { // 新区域在底部
-        newAreaY = SCREEN_HEIGHT - scrollDelta;
-        newAreaHeight = scrollDelta;
-    } else { // 新区域在顶部
-        newAreaY = 0;
-        newAreaHeight = -scrollDelta;
-    }
-    tft->fillRect(0, newAreaY, SCREEN_WIDTH, newAreaHeight, TFT_WHITE); // 用白色填充
-    Serial.print("Cleared new area at Y=");
-    Serial.print(newAreaY);
-    Serial.print(", Height=");
-    Serial.println(newAreaHeight);
-
-    // --- 绘制新暴露区域的内容 ---
-    Serial.println("Drawing new area content...");
-    drawNewArea(newAreaY, newAreaHeight);
-    --- 结束原始优化滚动逻辑 --- */
+    --- End Original Optimized Scroll Logic --- */
 }
 
 /**
@@ -657,6 +616,9 @@ bool ComicViewerPage::drawNewArea(int y, int h)
     Serial.print(y);
     Serial.print(", h=");
     Serial.println(h);
+
+    
+
 
     if (imageFiles.empty())
         return false; // 没有图片可绘制
@@ -885,6 +847,47 @@ bool ComicViewerPage::drawNewArea(int y, int h)
         }
     } // End image loop
     // --- 结束遍历所有图片 ---
+    // --- Draw Scroll Bar FIRST to avoid being skipped by touch interrupts ---
+    // Also, clear the scrollbar area first in case of partial redraws
+    const int scrollBarWidth = 5;
+    const int scrollBarX = SCREEN_WIDTH - scrollBarWidth;
+    const uint16_t scrollBarColor = TFT_LIGHTGREY;
+    const uint16_t thumbColor = TFT_DARKGREY;
+    const int minThumbHeight = 10;
+
+    // Clear the scrollbar background area
+    displayManager.getTFT()->fillRect(scrollBarX, 0, scrollBarWidth, SCREEN_HEIGHT, scrollBarColor);
+
+    if (totalComicHeight > SCREEN_HEIGHT)
+    {
+        // Calculate thumb height
+        int thumbHeight = (int)((float)SCREEN_HEIGHT / totalComicHeight * SCREEN_HEIGHT);
+        thumbHeight = std::max(minThumbHeight, thumbHeight);
+        thumbHeight = std::min(SCREEN_HEIGHT, thumbHeight);
+
+        // Calculate thumb position
+        int maxScrollOffset = totalComicHeight - SCREEN_HEIGHT;
+        // Prevent division by zero
+        int thumbY = (maxScrollOffset > 0) ? (int)((float)scrollOffset / maxScrollOffset * (SCREEN_HEIGHT - thumbHeight)) : 0;
+        thumbY = std::max(0, std::min(thumbY, SCREEN_HEIGHT - thumbHeight));
+
+        // Draw thumb
+        displayManager.getTFT()->fillRect(scrollBarX, thumbY, scrollBarWidth, thumbHeight, thumbColor);
+        Serial.print("Drew scrollbar at START of drawNewArea. Thumb Y: ");
+        Serial.print(thumbY);
+        Serial.print(", Thumb H: ");
+        Serial.println(thumbHeight);
+    }
+    else
+    {
+        Serial.print("Skipping scrollbar draw at START of drawNewArea. totalComicHeight (");
+        Serial.print(totalComicHeight);
+        Serial.print(") <= SCREEN_HEIGHT (");
+        Serial.print(SCREEN_HEIGHT);
+        Serial.println(")");
+        // Note: Background was already cleared above.
+    }
+    // --- End Scroll Bar ---
 
     // --- Clean up dynamically allocated buffers ---
     // Important: Only delete if allocation succeeded!
@@ -899,38 +902,8 @@ bool ComicViewerPage::drawNewArea(int y, int h)
     }
     else
     {
-        Serial.println("Finished drawing new area.");
-
-        // --- Draw Scroll Bar (Copied from drawContent) ---
-        if (totalComicHeight > SCREEN_HEIGHT)
-        {
-            const int scrollBarWidth = 5;
-            const int scrollBarX = SCREEN_WIDTH - scrollBarWidth;
-            const uint16_t scrollBarColor = TFT_LIGHTGREY;
-            const uint16_t thumbColor = TFT_DARKGREY;
-            const int minThumbHeight = 10;
-
-            // Calculate thumb height
-            int thumbHeight = (int)((float)SCREEN_HEIGHT / totalComicHeight * SCREEN_HEIGHT);
-            thumbHeight = std::max(minThumbHeight, thumbHeight);
-            thumbHeight = std::min(SCREEN_HEIGHT, thumbHeight);
-
-            // Calculate thumb position
-            int maxScrollOffset = totalComicHeight - SCREEN_HEIGHT;
-            // Prevent division by zero if maxScrollOffset is 0 (shouldn't happen if totalComicHeight > SCREEN_HEIGHT)
-            int thumbY = (maxScrollOffset > 0) ? (int)((float)scrollOffset / maxScrollOffset * (SCREEN_HEIGHT - thumbHeight)) : 0;
-            thumbY = std::max(0, std::min(thumbY, SCREEN_HEIGHT - thumbHeight));
-
-            // Draw scroll bar track and thumb
-            displayManager.getTFT()->fillRect(scrollBarX, 0, scrollBarWidth, SCREEN_HEIGHT, scrollBarColor);
-            displayManager.getTFT()->fillRect(scrollBarX, thumbY, scrollBarWidth, thumbHeight, thumbColor);
-            Serial.print("Drew scrollbar in drawNewArea. Thumb Y: ");
-            Serial.print(thumbY);
-            Serial.print(", Thumb H: ");
-            Serial.println(thumbHeight);
-        }
-        // --- End Scroll Bar ---
-
+        Serial.println("Finished drawing new area content.");
+        // Scroll bar is now drawn at the beginning.
         return false; // Indicate successful completion (drawing finished)
     }
 }
@@ -958,7 +931,48 @@ bool ComicViewerPage::drawNewArea(int y, int h)
  */
 bool ComicViewerPage::handleScrollGesture(uint16_t x, uint16_t y)
 {
-    // --- 双击检测 ---
+    // --- Scrollbar Click Detection ---
+    const int scrollBarWidth = 5; // Must match the width used in drawContent/drawNewArea
+    const int scrollBarX = SCREEN_WIDTH - scrollBarWidth;
+    int maxScrollOffset = (totalComicHeight > SCREEN_HEIGHT) ? (totalComicHeight - SCREEN_HEIGHT) : 0;
+
+    if (x >= scrollBarX && maxScrollOffset > 0) { // Check if touch is within scrollbar X range and scrolling is possible
+        Serial.print("Touch on scrollbar area at y: ");
+        Serial.println(y);
+
+        int oldScrollOffset = scrollOffset;
+
+        // Calculate target offset based on click position
+        // Map the click Y position linearly to the scroll offset range [0, maxScrollOffset]
+        int targetScrollOffset = (int)(((float)y / SCREEN_HEIGHT) * maxScrollOffset);
+
+        // Clamp the target offset to valid bounds
+        targetScrollOffset = std::max(0, std::min(targetScrollOffset, maxScrollOffset));
+
+        scrollOffset = targetScrollOffset; // Update scroll offset directly
+
+        int actualScrollDelta = scrollOffset - oldScrollOffset;
+
+        Serial.print("Scrollbar click: Old offset: ");
+        Serial.print(oldScrollOffset);
+        Serial.print(", Target offset: ");
+        Serial.print(targetScrollOffset);
+        Serial.print(", New offset: ");
+        Serial.print(scrollOffset);
+        Serial.print(", Actual delta: ");
+        Serial.println(actualScrollDelta);
+
+        if (actualScrollDelta != 0) {
+            scrollDisplay(actualScrollDelta); // Update display based on the calculated delta
+        } else {
+            Serial.println("Scrollbar click resulted in no change (already at target?).");
+        }
+        return true; // Event handled by scrollbar click
+    }
+    // --- End Scrollbar Click Detection ---
+
+
+    // --- 双击检测 (Keep original logic if not clicking scrollbar) ---
     static uint32_t lastTapTime = 0; // 记录上次点击时间
     uint32_t currentTime = millis(); // 获取当前时间
 
@@ -992,6 +1006,11 @@ bool ComicViewerPage::handleScrollGesture(uint16_t x, uint16_t y)
     { // 触摸屏幕顶部 1/4
         Serial.println("Scrolling up request");
         scrollDelta = -SCREEN_HEIGHT / 4; // 请求向上滚动四分之一屏幕
+    }
+    else if (y > (SCREEN_HEIGHT / 4) && y < (SCREEN_HEIGHT * 3) / 4)
+    { // 触摸屏幕中间区域
+        Serial.println("Touch in middle area, going back");
+        Router::getInstance().goBack(); // 返回到上一个页面（文件浏览器）
     }
 
     // 如果请求了滚动

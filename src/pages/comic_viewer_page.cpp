@@ -266,9 +266,8 @@ bool ComicViewerPage::drawContent()
             touchDetected = true;
 
             uint16_t touchX, touchY;
-            touchManager.getPoint(touchX, touchY); // 获取触摸坐标
-            handleTouch(touchX, touchY);           // 处理触摸中断
-            return false;                           // Exit row loop for this chunk
+            touchDetected = true;
+            break; // Exit image loop
         }
         // --- End touch check ---
 
@@ -370,9 +369,8 @@ bool ComicViewerPage::drawContent()
                     Serial.println("Touch detected during drawContent (chunk read loop), stopping draw.");
                     touchDetected = true;
                     uint16_t touchX, touchY;
-                    touchManager.getPoint(touchX, touchY); // 获取触摸坐标
-                    handleTouch(touchX, touchY);           // 处理触摸中断
-                    return false;
+                    touchDetected = true;
+                    break; // Exit chunk read loop
                 }
                 // --- End touch check ---
 
@@ -417,9 +415,8 @@ bool ComicViewerPage::drawContent()
                         Serial.println("Touch detected during drawContent (row process loop), stopping draw.");
                         touchDetected = true;
                         uint16_t touchX, touchY;
-                        touchManager.getPoint(touchX, touchY); // 获取触摸坐标
-                        handleTouch(touchX, touchY);           // 处理触摸中断
-                        return false;
+                    touchDetected = true;
+                    break; // Exit row process loop
                     }
                     // --- End touch check ---
 
@@ -460,6 +457,7 @@ bool ComicViewerPage::drawContent()
                 // 移动到下一个块的起始行
                 row += rowsToRead;
             } // End chunk reading loop
+            if (touchDetected) break; // Exit outer loop if touch detected in chunk loop
         }
         // --- 结束分块读取和绘制 ---
 
@@ -477,7 +475,7 @@ bool ComicViewerPage::drawContent()
 
     if (touchDetected) {
         Serial.println("DrawContent interrupted by touch.");
-        return true; // Indicate interruption
+        return true; // Indicate interruption (drawing was stopped)
     }
 
     // --- Draw Scroll Bar ---
@@ -507,7 +505,8 @@ bool ComicViewerPage::drawContent()
     // --- End Scroll Bar ---
 
 
-    return false; // Drawing completed without interruption
+    Serial.println("DrawContent completed without interruption.");
+    return false; // Indicate successful completion
 }
 
 
@@ -698,9 +697,8 @@ bool ComicViewerPage::drawNewArea(int y, int h)
             Serial.println("Touch detected during drawNewArea (image loop), stopping draw.");
             touchDetected = true;
             uint16_t touchX, touchY;
-            touchManager.getPoint(touchX, touchY); // 获取触摸坐标
-            handleTouch(touchX, touchY);           // 处理触摸中断
-            return false;
+            touchDetected = true;
+            break; // Exit image loop
         }
         // --- End touch check ---
 
@@ -763,9 +761,8 @@ bool ComicViewerPage::drawNewArea(int y, int h)
                         Serial.println("Touch detected during drawNewArea (chunk read loop), stopping draw.");
                         touchDetected = true;
                         uint16_t touchX, touchY;
-                        touchManager.getPoint(touchX, touchY); // 获取触摸坐标
-                        handleTouch(touchX, touchY);           // 处理触摸中断
-                        return false;
+                    touchDetected = true;
+                    break; // Exit chunk read loop
                     }
                     // --- End touch check ---
 
@@ -794,9 +791,8 @@ bool ComicViewerPage::drawNewArea(int y, int h)
                             Serial.println("Touch detected during drawNewArea (row process loop), stopping draw.");
                             touchDetected = true;
                             uint16_t touchX, touchY;
-                            touchManager.getPoint(touchX, touchY); // 获取触摸坐标
-                            handleTouch(touchX, touchY); // 处理触摸中断
-                            return false; // Exit row loop for this chunk
+                        touchDetected = true;
+                        break; // Exit row process loop
                         }
                         // --- End touch check ---
 
@@ -825,6 +821,7 @@ bool ComicViewerPage::drawNewArea(int y, int h)
 
                     row += rowsToRead; // 移动到下一个块
                 } // End chunk reading loop
+                if (touchDetected) break; // Exit outer loop if touch detected in chunk loop
             }
             // --- 结束分块绘制 ---
             file.close(); // 关闭文件
@@ -848,7 +845,7 @@ bool ComicViewerPage::drawNewArea(int y, int h)
 
     if (touchDetected) {
         Serial.println("DrawNewArea interrupted by touch.");
-        return true; // Indicate interruption
+        return true; // Indicate interruption (drawing was stopped)
     } else {
          Serial.println("Finished drawing new area.");
 
@@ -878,7 +875,7 @@ bool ComicViewerPage::drawNewArea(int y, int h)
         }
         // --- End Scroll Bar ---
 
-        return false; // Indicate successful completion
+        return false; // Indicate successful completion (drawing finished)
     }
 }
 
@@ -1010,12 +1007,16 @@ void ComicViewerPage::display()
  */
 void ComicViewerPage::handleTouch(uint16_t x, uint16_t y)
 {
-    // 优先处理滚动和双击返回
-    if (!handleScrollGesture(x, y))
-    {
-        // 如果不是滚动/双击，则认为是点击中间区域返回
-        Serial.println("Middle area touched, returning to browser");
-        Router::getInstance().goBack(); // 返回到上一个页面
+    // Attempt to handle scroll gestures.
+    // The decision to go back should be made based on touch events
+    // outside the interrupt context, e.g., in the main loop after
+    // display() or scrollDisplay() finishes or is interrupted.
+    bool handled = handleScrollGesture(x, y);
+    if (!handled) {
+        Serial.println("Touch event not handled by scroll gesture.");
+        // Consider adding logic here or in the main loop to handle non-scroll taps (like 'go back')
+        // For now, we just log it. The Router::goBack() call is removed to prevent
+        // navigation changes during potential drawing interrupts.
     }
 }
 
@@ -1033,4 +1034,9 @@ void ComicViewerPage::cleanup() {
     scrollOffset = 0;
     totalComicHeight = 0;
     Serial.println("ComicViewerPage resources cleaned up.");
+}
+
+void ComicViewerPage::handleLoop() {
+    // Currently no periodic tasks needed for comic viewer
+    return;
 }

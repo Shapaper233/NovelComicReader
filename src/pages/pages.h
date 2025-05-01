@@ -25,6 +25,8 @@ public:
     virtual void setParams(void* params) {}
     // Add a virtual method for explicit resource cleanup before destruction
     virtual void cleanup() {}
+    // Add a virtual method to be called in the main loop for periodic tasks
+    virtual void handleLoop() {}
     virtual ~Page() = default;
 };
 
@@ -81,6 +83,11 @@ public:
     virtual void handleTouch(uint16_t x, uint16_t y) override;
 
     /**
+     * @brief Handle periodic tasks in the main loop (override Page base class method)
+     */
+    virtual void handleLoop() override; // Add handleLoop declaration
+
+    /**
      * @brief 获取 SD 卡管理器实例 (可能用于其他类访问)
      * @return SDCard& SD 卡管理器引用
      */
@@ -123,6 +130,11 @@ public:
      * @param y 触摸点 Y 坐标
      */
     virtual void handleTouch(uint16_t x, uint16_t y) override;
+
+    /**
+     * @brief Handle periodic tasks in the main loop (override Page base class method)
+     */
+    virtual void handleLoop() override; // Add handleLoop declaration
 
     /**
      * @brief 设置要显示的图片路径
@@ -205,6 +217,11 @@ public:
      * @param y 触摸点 Y 坐标
      */
     virtual void handleTouch(uint16_t x, uint16_t y) override;
+
+    /**
+     * @brief Handle periodic tasks in the main loop (override Page base class method)
+     */
+    virtual void handleLoop() override; // Add handleLoop declaration
 
     /**
      * @brief 设置要显示的漫画目录路径。

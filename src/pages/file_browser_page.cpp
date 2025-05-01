@@ -102,6 +102,10 @@ void FileBrowserPage::_drawButton(const char *text, uint16_t x, uint16_t y, uint
     // tft->setTextColor(TFT_WHITE, TFT_BLACK); // Example if needed
 }
 
+void FileBrowserPage::handleLoop() {
+    // Currently no periodic tasks needed for file browser
+    return;
+}
 
 // --- Public Methods ---
 

@@ -94,6 +94,12 @@ void loop() {
         //}
     }
 
+    // Handle periodic tasks for the current page
+    Page* currentPage = router.getCurrentPage();
+    if (currentPage) {
+        currentPage->handleLoop();
+    }
+
     // 其他系统任务
     delay(10);  // 防止过度占用CPU
 }

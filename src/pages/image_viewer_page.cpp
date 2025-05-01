@@ -60,3 +60,8 @@ void ImageViewerPage::setImagePath(const String &path)
 {
     currentImagePath = path;
 }
+
+void ImageViewerPage::handleLoop() {
+    // Currently no periodic tasks needed for image viewer
+    return;
+}

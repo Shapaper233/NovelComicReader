@@ -62,6 +62,8 @@ public:
 
     void display() override;
     void handleTouch(uint16_t x, uint16_t y) override;
+    // Add handleLoop declaration
+    void handleLoop() override;
     // Override to receive parameters from the router
     void setParams(void *params) override;
 

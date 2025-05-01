@@ -31,6 +31,7 @@
 *   声明必要的虚函数：
     *   `virtual void display() override;` - 负责绘制页面的所有内容。
     *   `virtual void handleTouch(uint16_t x, uint16_t y) override;` - 处理该页面的触摸输入。
+    *   `virtual void handleLoop() override;` - (可选) 处理在主 `loop()` 中调用的周期性任务。即使页面不需要周期性任务，也必须覆盖此方法（可以为空实现）。
     *   `virtual void setParams(void* params) override;` (可选) - 如果页面需要从导航中接收参数。
     *   `virtual void cleanup() override;` (可选) - 如果页面在销毁前需要释放资源（例如动态分配的内存）。
 *   声明构造函数 `YourNewPage();`。

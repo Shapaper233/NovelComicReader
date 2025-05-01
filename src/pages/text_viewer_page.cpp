@@ -99,53 +99,52 @@ void TextViewerPage::setParams(void *params)
     }
 }
 
+// This is the display function that was missing its closing brace
 void TextViewerPage::display()
 {
-    if (!fileLoaded) // fileLoaded now means "metadata calculated or loaded from cache"
-    {
-        calculateLayout(); // Calculate layout based on font size
+    calculateLayout(); // Calculate layout based on font size
 
-        // --- Unified JSON Cache Logic ---
-        bool loadedFromCache = false;
-        if (filePath.length() > 0) {
-            cacheFilePath = filePath + ".cacheinfo"; // Construct JSON cache file path
-            const char* originalPathCStr = filePath.c_str();
-            const char* cachePathCStr = cacheFilePath.c_str();
-            Serial.printf("DEBUG: Checking for JSON cache file: %s\n", cachePathCStr);
+    // --- Unified JSON Cache Logic ---
+    bool loadedFromCache = false;
+    if (filePath.length() > 0) {
+        cacheFilePath = filePath + ".cacheinfo"; // Construct JSON cache file path
+        const char* originalPathCStr = filePath.c_str();
+        const char* cachePathCStr = cacheFilePath.c_str();
+        Serial.printf("DEBUG: Checking for JSON cache file: %s\n", cachePathCStr);
 
-            // Check if original file and JSON cache file exist
-            if (SDCard::getInstance().exists(originalPathCStr) && SDCard::getInstance().exists(cachePathCStr)) {
-                Serial.println("DEBUG: Original file and JSON cache file exist.");
-                File originalFile = SDCard::getInstance().openFile(originalPathCStr);
-                if (originalFile) {
-                    size_t originalSize = originalFile.size();
-                    originalFile.close(); // Close original file after getting size
+        // Check if original file and JSON cache file exist
+        if (SDCard::getInstance().exists(originalPathCStr) && SDCard::getInstance().exists(cachePathCStr)) {
+            Serial.println("DEBUG: Original file and JSON cache file exist.");
+            File originalFile = SDCard::getInstance().openFile(originalPathCStr);
+            if (originalFile) {
+                size_t originalSize = originalFile.size();
+                originalFile.close(); // Close original file after getting size
 
-                    // Attempt to load from JSON cache, which includes size check internally
-                    if (loadMetadataFromCache(originalSize)) { // Pass original size for validation
-                        Serial.println("DEBUG: Successfully loaded metadata from JSON cache.");
-                        fileLoaded = true; // Mark as loaded
-                        loadedFromCache = true;
-                        startTimeMillis = millis(); // Set start time for potential redraws
-                    } else {
-                        Serial.println("DEBUG: Failed to load metadata from JSON cache (invalid size or corrupted?). Removing cache and recalculating.");
-                        SD.remove(cachePathCStr); // Use standard SD.remove()
-                    }
+                // Attempt to load from JSON cache, which includes size check internally
+                if (loadMetadataFromCache(originalSize)) { // Pass original size for validation
+                    Serial.println("DEBUG: Successfully loaded metadata from JSON cache.");
+                    fileLoaded = true; // Mark as loaded
+                    loadedFromCache = true;
+                    startTimeMillis = millis(); // Set start time for potential redraws
                 } else {
-                     Serial.println("DEBUG: Error opening original file to get size for cache validation.");
+                    Serial.println("DEBUG: Failed to load metadata from JSON cache (invalid size or corrupted?). Removing cache and recalculating.");
+                    SD.remove(cachePathCStr); // Use standard SD.remove()
                 }
             } else {
-                 Serial.printf("DEBUG: Original file (%s) or JSON cache file (%s) does not exist. Will calculate metadata.\n",
-                               originalPathCStr, cachePathCStr);
+                 Serial.println("DEBUG: Error opening original file to get size for cache validation.");
             }
-        }
-        // --- End Unified JSON Cache Logic ---
-
-        // If not loaded from cache, calculate metadata
-        if (!loadedFromCache) {
-            calculateFileMetadata(); // Calculate size, total lines, and index
+        } else {
+             Serial.printf("DEBUG: Original file (%s) or JSON cache file (%s) does not exist. Will calculate metadata.\n",
+                           originalPathCStr, cachePathCStr);
         }
     }
+    // --- End Unified JSON Cache Logic ---
+
+    // If not loaded from cache, calculate metadata
+    if (!loadedFromCache) {
+        calculateFileMetadata(); // Calculate size, total lines, and index
+    }
+
 
     // If metadata calculation/loading failed, the respective functions would have set fileLoaded=true
     // and potentially stored an error message in lines[0].
@@ -200,7 +199,18 @@ void TextViewerPage::display()
         }
     }
     // No explicit else needed here, as loadContent handles the initial "Loading..." or error display.
+} // <-- Added missing closing brace for display()
+
+void TextViewerPage::handleLoop() {
+    // Currently no periodic tasks needed for text viewer
+    return;
 }
+
+// Method to set the file path before displaying the page
+// This is the duplicate definition that needs to be removed.
+// void TextViewerPage::setFilePath(const String &path)
+// { ... entire duplicate function body ... }
+// Removing the duplicate function entirely.
 
 void TextViewerPage::handleTouch(uint16_t x, uint16_t y)
 {

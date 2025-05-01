@@ -2,17 +2,13 @@
 #include <FS.h>
 #include <algorithm>  // For std::min, std::max
 #include <TFT_eSPI.h> // Include for color constants like TFT_LIGHTGREY
-#include <cstring>    // For strpbrk
-#include <vector>     // Make sure vector is included for lineIndex
 
 #include "text_viewer_page.h"
 #include "../core/router.h"
 #include "../core/sdcard.h" // Needed for file operations
-#include "../core/font.h"   // Ensure Font class methods are available
-#include "../config/config.h" // Include for SCREEN_WIDTH
 
 // --- Constants ---
-const int TEXT_FONT_SIZE = 1;   // Use font size 1 (e.g., 16x16) - Font size might need adjustment based on font file
+const int TEXT_FONT_SIZE = 1;   // Use font size 1 (e.g., 16x16)
 const int TEXT_MARGIN_X = 5;    // Left/right margin for text
 const int TEXT_MARGIN_Y = 5;    // Top/bottom margin for text
 const int SCROLLBAR_WIDTH = 10; // Width of the scrollbar
@@ -21,14 +17,10 @@ const int BACK_BUTTON_WIDTH = 60;
 const int BACK_BUTTON_HEIGHT = 30;
 const int BACK_BUTTON_X = 5;
 const int BACK_BUTTON_Y = 5;
-const int LINE_COUNT_UPDATE_INTERVAL = 500; // Update display every X lines indexed
 
 // Define content area based on button/header
 const int CONTENT_Y = BACK_BUTTON_Y + BACK_BUTTON_HEIGHT + TEXT_MARGIN_Y * 2;
 const int CONTENT_HEIGHT = SCREEN_HEIGHT - CONTENT_Y - TEXT_MARGIN_Y;
-// Calculate available width for text wrapping
-const int AVAILABLE_TEXT_WIDTH = SCREEN_WIDTH - TEXT_MARGIN_X * 2 - SCROLLBAR_WIDTH - SCROLLBAR_MARGIN;
-
 
 // --- Constructor ---
 TextViewerPage::TextViewerPage()
@@ -38,44 +30,38 @@ TextViewerPage::TextViewerPage()
       totalLines(0),
       linesPerPage(0),
       lineHeight(0),
-      fileLoaded(false),
-      fileSize(0),
-      originalLineCount(0)
-{
-}
-
-// --- Destructor ---
-// (No changes needed)
+      fileLoaded(false) {}
 
 // --- Public Methods ---
 
 void TextViewerPage::setFilePath(const String &path)
 {
     Serial.print("TextViewerPage::setFilePath received path: ");
-    Serial.println(path);
-    closeFile();
+    Serial.println(path); // Log the path as soon as it's received
     filePath = path;
     Serial.print("TextViewerPage::filePath assigned: ");
-    Serial.println(filePath);
-    fileLoaded = false;
-    currentScrollLine = 0;
-    lineIndex.clear();
-    totalLines = 0;
-    originalLineCount = 0;
-    fileSize = 0;
+    Serial.println(filePath); // Log the path after assignment
+    fileLoaded = false;       // Reset loaded flag when path changes
+    currentScrollLine = 0;    // Reset scroll position
+    lines.clear();            // Clear previous content
 }
 
+// Implementation of the virtual setParams method
 void TextViewerPage::setParams(void *params)
 {
     if (params)
     {
+        // Cast the void pointer back to a String pointer
         String *pathPtr = static_cast<String *>(params);
+        // Call the existing setFilePath method with the actual path String
         setFilePath(*pathPtr);
     }
     else
     {
+        // Handle case where no parameters were passed (optional)
         Serial.println("TextViewerPage::setParams received null params.");
-        setFilePath("");
+        // Maybe set a default state or show an error?
+        setFilePath(""); // Set empty path to indicate an issue
     }
 }
 
@@ -83,34 +69,46 @@ void TextViewerPage::display()
 {
     if (!fileLoaded)
     {
-        calculateLayout(); // Calculate lineHeight first
-        loadContent(); // Handles loading UI and drawing final content/error
+        calculateLayout(); // Calculate layout based on font size
+        loadContent();     // Load and wrap text content
+    }
+
+    displayManager.clear();
+
+    // Draw Back Button (similar to FileBrowserPage)
+    displayManager.getTFT()->fillRoundRect(BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 5, TFT_BLUE);
+    displayManager.getTFT()->drawRoundRect(BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 5, TFT_WHITE);
+    displayManager.drawCenteredText("Back", BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 1, false); // Use built-in font for button
+
+    // Draw Content Area Separator
+    displayManager.getTFT()->drawFastHLine(0, BACK_BUTTON_Y + BACK_BUTTON_HEIGHT + TEXT_MARGIN_Y - 1, SCREEN_WIDTH, TFT_DARKGREY);
+
+    if (fileLoaded)
+    {
+        drawContent();
+        drawScrollbar();
     }
     else
     {
-        // Redraw current view if needed
-        displayManager.clear();
-        displayManager.getTFT()->fillRoundRect(BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 5, TFT_BLUE);
-        displayManager.getTFT()->drawRoundRect(BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 5, TFT_WHITE);
-        displayManager.drawCenteredText("Back", BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 1, false);
-        displayManager.getTFT()->drawFastHLine(0, BACK_BUTTON_Y + BACK_BUTTON_HEIGHT + TEXT_MARGIN_Y - 1, SCREEN_WIDTH, TFT_DARKGREY);
-        drawContent();
-        drawScrollbar();
+        // Display loading or error message
+        displayManager.drawCenteredText("Loading...", 0, CONTENT_Y, SCREEN_WIDTH, CONTENT_HEIGHT, 2);
     }
 }
 
 void TextViewerPage::handleTouch(uint16_t x, uint16_t y)
 {
+    // Handle Back Button Touch
     if (x >= BACK_BUTTON_X && x < BACK_BUTTON_X + BACK_BUTTON_WIDTH &&
         y >= BACK_BUTTON_Y && y < BACK_BUTTON_Y + BACK_BUTTON_HEIGHT)
     {
-        closeFile();
-        Router::getInstance().goBack();
+        Router::getInstance().goBack(); // Navigate back
         return;
     }
 
+    // Handle Scrolling Touch (only if content is scrollable)
     if (totalLines > linesPerPage)
     {
+        // Check if touch is within the main content area (excluding header/button)
         if (y > BACK_BUTTON_Y + BACK_BUTTON_HEIGHT + TEXT_MARGIN_Y)
         {
             handleScroll(y);
@@ -120,430 +118,261 @@ void TextViewerPage::handleTouch(uint16_t x, uint16_t y)
 
 // --- Private Helper Methods ---
 
-void TextViewerPage::closeFile()
-{
-    if (currentFile)
-    {
-        currentFile.close();
-        Serial.println("Closed file.");
-    }
-}
-
 void TextViewerPage::calculateLayout()
 {
-    // Use the actual font height provided by the font manager
-    // Ensure font is loaded before calling this, or handle fallback
-    // fontManager.loadFont(); // Removed incorrect call - Font should be initialized earlier
-    lineHeight = fontManager.getCharacterHeight(TEXT_FONT_SIZE * 16); // Assuming size 1 maps to 16px font height
+    // Use font size 1 (16x16) for calculations
+    lineHeight = fontManager.getCharacterHeight(TEXT_FONT_SIZE * 16); // Assuming size 1 maps to 16px font
     if (lineHeight == 0)
-    {
         lineHeight = 16; // Fallback if font not loaded yet
-        Serial.println("Warning: Font height is 0, using fallback 16.");
-    }
 
-    int availableHeight = SCREEN_HEIGHT - (BACK_BUTTON_Y + BACK_BUTTON_HEIGHT + TEXT_MARGIN_Y * 2);
+    int availableHeight = SCREEN_HEIGHT - (BACK_BUTTON_Y + BACK_BUTTON_HEIGHT + TEXT_MARGIN_Y) - TEXT_MARGIN_Y; // Height below button
     linesPerPage = availableHeight / lineHeight;
     if (linesPerPage < 1)
-    {
-        linesPerPage = 1;
-    }
-    Serial.printf("Layout calculated: lineHeight=%d, linesPerPage=%d, availableWidth=%d\n", lineHeight, linesPerPage, AVAILABLE_TEXT_WIDTH);
-
-    // Set TFT font size for width calculations in loadContent
-    displayManager.getTFT()->setTextSize(TEXT_FONT_SIZE);
-    // Set the correct font if your displayManager or fontManager handles it
-    // Example: displayManager.getTFT()->setFreeFont(YOUR_FONT);
-    // Or rely on fontManager to set it if it controls the TFT font globally
+        linesPerPage = 1; // Ensure at least one line fits
 }
 
-// loadContent with text wrapping logic
 void TextViewerPage::loadContent()
 {
-    lineIndex.clear();
+    lines.clear();
     currentScrollLine = 0;
     fileLoaded = false;
-    fileSize = 0;
-    totalLines = 0;
 
-    const char *pathCStr = filePath.c_str();
-    Serial.print("Attempting to load content (with wrapping) for: '");
+    const char *pathCStr = filePath.c_str(); // Convert String to const char*
+
+    Serial.print("Attempting to load content for (pathCStr): '");
+    Serial.print(pathCStr); // Try printing pathCStr directly
+    Serial.println("'");
+
+    // Print raw bytes of the path string
+    Serial.print("Raw bytes of pathCStr: ");
+    for (int i = 0; pathCStr[i] != '\0'; ++i)
+    {
+        Serial.print(pathCStr[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println();
+
+    // Check if file exists first using const char*
+    if (!SDCard::getInstance().exists(pathCStr))
+    {
+        Serial.print("File existence check failed for pathCStr: '");
+        Serial.print(pathCStr);
+        Serial.println("'");
+        lines.push_back("Error: File not found.");
+        totalLines = lines.size();
+        fileLoaded = true;
+        return;
+    }
+    else
+    {
+        Serial.println("File existence check passed. Attempting to open...");
+    }
+
+    // Open file using const char*
+    File file = SDCard::getInstance().openFile(pathCStr);
+    if (!file)
+    {
+        Serial.print("Failed to open file with SDCard::openFile() using pathCStr: '"); // Clarify which open failed
+        Serial.print(pathCStr);
+        Serial.println("'");
+        lines.push_back("Error: Could not open file.");
+        totalLines = lines.size();
+        fileLoaded = true; // Mark as loaded even on error to show message
+        return;
+    }
+
+    Serial.print("Loading file (pathCStr): '");
     Serial.print(pathCStr);
     Serial.println("'");
 
-    // --- 1. Open File, Get Size ---
-    currentFile = SDCard::getInstance().openFile(pathCStr);
-    if (!currentFile)
+    // Calculate available width for text (screen width - margins - scrollbar)
+    int availableWidth = SCREEN_WIDTH - TEXT_MARGIN_X * 2 - SCROLLBAR_WIDTH - SCROLLBAR_MARGIN;
+    if (availableWidth <= 0)
     {
-        Serial.println("Failed to open file initially.");
-        displayManager.clear();
-        displayManager.drawCenteredText("Error: Could not open file.", 0, CONTENT_Y, SCREEN_WIDTH, CONTENT_HEIGHT, TEXT_FONT_SIZE);
-        displayManager.getTFT()->fillRoundRect(BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 5, TFT_BLUE);
-        displayManager.getTFT()->drawRoundRect(BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 5, TFT_WHITE);
-        displayManager.drawCenteredText("Back", BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 1, false);
-        fileLoaded = true; // Error state
-        return;
-    }
-    fileSize = currentFile.size();
-    if (fileSize == 0)
-    {
-        Serial.println("File is empty.");
-        displayManager.clear();
-        displayManager.drawCenteredText("Empty File", 0, CONTENT_Y, SCREEN_WIDTH, CONTENT_HEIGHT, TEXT_FONT_SIZE);
-        displayManager.getTFT()->fillRoundRect(BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 5, TFT_BLUE);
-        displayManager.getTFT()->drawRoundRect(BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 5, TFT_WHITE);
-        displayManager.drawCenteredText("Back", BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 1, false);
+        Serial.println("Error: Screen too narrow for text.");
+        lines.push_back("Error: Screen too narrow.");
+        totalLines = lines.size();
         fileLoaded = true;
-        totalLines = 1;
-        lineIndex.push_back(0);
+        file.close();
         return;
     }
 
-    // --- 2. Display Loading UI ---
-    displayManager.clear();
-    displayManager.getTFT()->fillRoundRect(BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 5, TFT_DARKGREY);
-    displayManager.drawCenteredText("Loading", BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 1, false);
-    displayManager.getTFT()->drawFastHLine(0, BACK_BUTTON_Y + BACK_BUTTON_HEIGHT + TEXT_MARGIN_Y - 1, SCREEN_WIDTH, TFT_DARKGREY);
+    String currentLine = "";
+    String wordBuffer = "";
 
-    int infoY = CONTENT_Y;
-    String displayName = filePath;
-    if (displayName.length() > 35) {
-        displayName = "..." + displayName.substring(displayName.length() - 32);
-    }
-    displayManager.drawText(("File: " + displayName).c_str(), TEXT_MARGIN_X, infoY, TEXT_FONT_SIZE);
-    infoY += lineHeight;
-    displayManager.drawText(("Size: " + String(fileSize) + " bytes").c_str(), TEXT_MARGIN_X, infoY, TEXT_FONT_SIZE);
-    infoY += lineHeight;
-    int lineCountY = infoY;
-    displayManager.drawText("Lines: 0", TEXT_MARGIN_X, lineCountY, TEXT_FONT_SIZE);
-    infoY += lineHeight;
-    displayManager.drawText("Processing...", TEXT_MARGIN_X, infoY, TEXT_FONT_SIZE);
-    Serial.println("Processing file for line index (with wrapping)...");
-
-    // --- 3. Build Line Index with Wrapping ---
-    lineIndex.clear();
-    lineIndex.push_back(0); // First line starts at byte 0
-
-    currentFile.seek(0); // Ensure we start from the beginning
-
-    // Buffer for reading file chunks
-    const size_t bufferSize = 256;
-    char fileBuffer[bufferSize];
-    size_t bufferOffset = 0;  // Current position within the fileBuffer
-    size_t bytesInBuffer = 0; // Number of valid bytes currently in fileBuffer
-
-    size_t currentLineStartPos = 0;       // File position where the current rendered line started
-    size_t lastPotentialWrapPos = 0;      // File position *after* the last whitespace seen on the current line segment.
-    String currentLineStr = "";           // Accumulate current line segment for width check
-    unsigned long lastUpdateTime = millis(); // For periodic UI update
-
-    while (true) { // Loop until EOF is processed
-        // Refill buffer if needed
-        if (bufferOffset >= bytesInBuffer) {
-            bytesInBuffer = currentFile.readBytes(fileBuffer, bufferSize);
-            bufferOffset = 0;
-            if (bytesInBuffer == 0) {
-                break; // End of file
-            }
-        }
-
-        // Process one character from the buffer
-        size_t charByteStartPos = currentFile.position() - bytesInBuffer + bufferOffset; // Calculate original file position
-        size_t previousBufferOffset = bufferOffset;
-        String currentCharStr = fontManager.getNextCharacter(fileBuffer, bufferOffset);
-        size_t charByteLength = bufferOffset - previousBufferOffset;
-
-        if (charByteLength == 0 || currentCharStr.length() == 0) {
-             // This might happen with invalid UTF-8 sequences or end of buffer issues
-             Serial.printf("Warning: getNextCharacter consumed 0 bytes or returned empty string at file pos %u. Skipping 1 byte.\n", charByteStartPos);
-             // Manually advance buffer offset if possible, otherwise break if stuck
-             if (bufferOffset < bytesInBuffer) {
-                 bufferOffset++;
-             } else {
-                 // If we consumed 0 bytes at the very end of the buffer, reading again might help,
-                 // but if bytesInBuffer is 0, we are truly at EOF or error.
-                 if (bytesInBuffer == 0) break; // Break if already at EOF
-                 // Otherwise, the outer loop will try to refill the buffer.
-                 // We might risk an infinite loop if the file has invalid bytes.
-                 // Let's just break to be safe if we can't advance bufferOffset.
-                 break;
-             }
-             continue; // Skip processing this byte/position
-        }
-
-        size_t currentPos = charByteStartPos + charByteLength; // Position *after* the character
-        const char *currentCharCStr = currentCharStr.c_str();
-        char firstByte = currentCharCStr[0];
-        bool isNewline = (firstByte == '\n');
-        bool isWhitespace = (firstByte == ' ' || firstByte == '\t' || firstByte == '\r'); // Exclude newline
-
-        if (isNewline) {
-            // Explicit newline: End the current line here
-            if (currentPos > lineIndex.back()) {
-                lineIndex.push_back(currentPos);
-            }
-            currentLineStr = "";
-            currentLineStartPos = currentPos;
-            lastPotentialWrapPos = currentPos;
-        } else {
-            // Not a newline, check for wrapping
-            String testLineStr = currentLineStr + currentCharStr;
-            int testLineWidth = displayManager.getTFT()->textWidth(testLineStr.c_str());
-
-            if (testLineWidth > AVAILABLE_TEXT_WIDTH && currentLineStr.length() > 0) {
-                // Wrap needed, and the line isn't empty (prevents wrapping just because first char is too wide)
-                size_t wrapPos;
-                if (lastPotentialWrapPos > currentLineStartPos) {
-                    // Wrap at the position *after* the last whitespace
-                    wrapPos = lastPotentialWrapPos;
-                } else {
-                    // No whitespace found on this line segment, force wrap *before* the current character
-                    wrapPos = charByteStartPos;
-                    // Edge case: If the first character itself is too wide
-                    if (wrapPos == currentLineStartPos) {
-                         // Wrap *after* this single character if it's the only one
-                         wrapPos = currentPos;
-                    }
-                }
-
-                // Add the wrap point if it's valid and new
-                if (wrapPos > lineIndex.back()) {
-                    lineIndex.push_back(wrapPos);
-                } else {
-                    // This might happen if forced wrap (wrapPos=charByteStartPos) coincides with previous index.
-                    // Or if wrapPos == currentLineStartPos and we decided to wrap after (wrapPos=currentPos)
-                    // and currentPos coincides with previous index.
-                    // Avoid adding duplicate or earlier indices.
-                    // If wrapPos needs to be currentPos due to single char overflow, check again.
-                    if (wrapPos == charByteStartPos && wrapPos == currentLineStartPos && currentPos > lineIndex.back()) {
-                         lineIndex.push_back(currentPos); // Wrap after the single long char
-                         wrapPos = currentPos; // Update wrapPos for line start calculation
-                    } else {
-                         Serial.printf("Skipping redundant wrap point: %u (last index: %u)\n", wrapPos, lineIndex.back());
-                    }
-                }
-
-
-                // Start new line segment calculation from wrapPos
-                currentLineStartPos = wrapPos;
-
-                // Read the content from wrapPos up to currentPos to form the start of the new line
-                // Need to handle potential multi-byte characters correctly if seeking back.
-                // Simpler: just use the current character as the start of the new line string.
-                // If we wrapped at whitespace, the current char is the start of the next word.
-                // If we force-wrapped, the current char is the one that didn't fit.
-                currentLineStr = currentCharStr; // Start new line string with the current char
-                lastPotentialWrapPos = currentLineStartPos; // Reset wrap pos for the new line
-
-                // If the character that starts the new line *is* whitespace, update potential wrap pos
-                if (isWhitespace) {
-                     lastPotentialWrapPos = currentPos;
-                }
-
-            } else {
-                // Character fits, add it to the current line string
-                currentLineStr += currentCharStr;
-                if (isWhitespace) {
-                    lastPotentialWrapPos = currentPos; // Update potential wrap position
-                }
-            }
-        }
-
-        // --- Periodic UI Update ---
-        if (millis() - lastUpdateTime > LINE_COUNT_UPDATE_INTERVAL) {
-             displayManager.getTFT()->fillRect(TEXT_MARGIN_X + 40, lineCountY, 100, lineHeight, TFT_BLACK); // Clear old count
-             displayManager.drawText(String(lineIndex.size()).c_str(), TEXT_MARGIN_X + 40, lineCountY, TEXT_FONT_SIZE);
-             lastUpdateTime = millis();
-        }
-
-    } // End while loop
-
-    // --- Finalize Loading ---
-    totalLines = lineIndex.size();
-    Serial.printf("File processing complete. Total rendered lines indexed: %d\n", totalLines);
-    // Final update for line count display
-    displayManager.getTFT()->fillRect(TEXT_MARGIN_X + 40, lineCountY, 100, lineHeight, TFT_BLACK);
-    displayManager.drawText(String(totalLines).c_str(), TEXT_MARGIN_X + 40, lineCountY, TEXT_FONT_SIZE);
-    // Clear "Processing..." message
-    displayManager.getTFT()->fillRect(TEXT_MARGIN_X, infoY, SCREEN_WIDTH - TEXT_MARGIN_X * 2, lineHeight, TFT_BLACK);
-
-    fileLoaded = true;
-
-    // --- Draw Initial Content View ---
-    displayManager.clear(); // Clear loading screen fully
-    displayManager.getTFT()->fillRoundRect(BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 5, TFT_BLUE);
-    displayManager.getTFT()->drawRoundRect(BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 5, TFT_WHITE);
-    displayManager.drawCenteredText("Back", BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 1, false);
-    displayManager.getTFT()->drawFastHLine(0, BACK_BUTTON_Y + BACK_BUTTON_HEIGHT + TEXT_MARGIN_Y - 1, SCREEN_WIDTH, TFT_DARKGREY);
-    drawContent();
-    drawScrollbar();
-}
-
-
-// drawContent reads segments based on index and draws them
-// (No changes needed in drawContent for wrapping, as lineIndex now contains wrap points)
-void TextViewerPage::drawContent()
-{
-    if (!currentFile)
-    { // Check if file is valid
-        displayManager.drawCenteredText("Error: File not open", 0, CONTENT_Y, SCREEN_WIDTH, CONTENT_HEIGHT, TEXT_FONT_SIZE);
-        return;
-    }
-    if (lineIndex.empty())
-    { // Check if index is empty
-        displayManager.drawCenteredText("Empty File", 0, CONTENT_Y, SCREEN_WIDTH, CONTENT_HEIGHT, TEXT_FONT_SIZE);
-        return;
-    }
-
-    int y = CONTENT_Y;
-    int endLine = std::min(currentScrollLine + linesPerPage, totalLines);
-
-    // Buffer for reading line segments
-    const size_t lineBufferSize = 512; // Adjust as needed
-    char lineBuffer[lineBufferSize];
-
-    for (int i = currentScrollLine; i < endLine; ++i)
+    while (file.available())
     {
-        if (i >= 0 && i < lineIndex.size())
+        char c = file.read();
+
+        // Handle line breaks
+        if (c == '\n' || c == '\r')
         {
-            size_t startOffset = lineIndex[i];
-            // Determine endOffset carefully: it's the start of the *next* indexed line, or EOF
-            size_t endOffset = (i + 1 < lineIndex.size()) ? lineIndex[i + 1] : fileSize;
-            size_t segmentLength = endOffset - startOffset;
-
-            if (segmentLength == 0) // Handle empty lines correctly
-            {
-                // Draw nothing, just advance y
+            if (c == '\r' && file.peek() == '\n')
+            {                // Handle CRLF
+                file.read(); // Consume the '\n'
             }
-            else if (segmentLength < lineBufferSize) // Ensure segment fits in buffer
+            // Process the completed line (including the last word)
+            if (wordBuffer.length() > 0)
             {
-                currentFile.seek(startOffset);
-                size_t bytesRead = currentFile.readBytes(lineBuffer, segmentLength);
+                currentLine += wordBuffer;
+                wordBuffer = "";
+            }
+            lines.push_back(currentLine);
+            currentLine = "";
+            continue; // Move to next character
+        }
 
-                if (bytesRead == segmentLength)
-                {
-                    lineBuffer[bytesRead] = '\0'; // Null-terminate
+        // Add character to word buffer
+        wordBuffer += c;
 
-                    // Remove trailing newline/CR characters before drawing
-                    // These might exist if the segment ends exactly on a file's newline
-                    size_t actualLength = bytesRead;
-                    while (actualLength > 0 && (lineBuffer[actualLength - 1] == '\n' || lineBuffer[actualLength - 1] == '\r')) {
-                        lineBuffer[actualLength - 1] = '\0';
-                        actualLength--;
-                    }
+        // Check if adding the current word exceeds the line width
+        String testLine = currentLine + wordBuffer;
+        int currentLineWidth = 0;
+        size_t offset = 0;
+        while (offset < testLine.length())
+        {
+            String nextChar = fontManager.getNextCharacter(testLine.c_str(), offset);
+            currentLineWidth += fontManager.getCharacterWidth(TEXT_FONT_SIZE * 16); // Use configured font size
+        }
 
-                    // Draw the segment if it's not empty after stripping newlines
-                    if (actualLength > 0) {
-                         // Trim leading whitespace *only for display* if the line started due to wrapping whitespace
-                         char* drawPtr = lineBuffer;
-                         if (startOffset > 0) { // Don't trim the very first line
-                             bool wrappedAtSpace = false;
-                             // Heuristic: If the previous char in the file was whitespace, we likely wrapped there.
-                             if (startOffset > 0) {
-                                 currentFile.seek(startOffset - 1);
-                                 char prevChar = currentFile.read();
-                                 if (prevChar == ' ' || prevChar == '\t' || prevChar == '\r') {
-                                     wrappedAtSpace = true;
-                                 }
-                             }
-                             // If wrapped at space, skip leading spaces in the buffer for drawing
-                             if (wrappedAtSpace) {
-                                 while (*drawPtr == ' ' || *drawPtr == '\t') {
-                                     drawPtr++;
-                                 }
-                             }
-                         }
-                         // Only draw if there's something left after potential trimming
-                         if (*drawPtr != '\0') {
-                            displayManager.drawText(drawPtr, TEXT_MARGIN_X, y, TEXT_FONT_SIZE);
-                         }
-                    }
-                }
-                else
-                {
-                    Serial.printf("Error reading segment %d: Expected %u, got %u\n", i, segmentLength, bytesRead);
-                    // Optionally draw an error indicator for this line
-                }
+        if (currentLineWidth > availableWidth)
+        {
+            // Word itself is too long or line is full
+            if (currentLine.length() > 0)
+            {
+                // Add the line *without* the current word
+                lines.push_back(currentLine);
+                // Start new line with the current word
+                currentLine = wordBuffer;
+                wordBuffer = "";
             }
             else
             {
-                 Serial.printf("Error: Segment %d too long (%u bytes) for buffer (%u bytes)\n", i, segmentLength, lineBufferSize);
-                 // Draw a placeholder or error message for this line
-                 displayManager.drawText("...", TEXT_MARGIN_X, y, TEXT_FONT_SIZE);
+                // The word itself is longer than the line width
+                // Break the word (simple approach: add what fits, carry over rest)
+                String fittedPart = "";
+                String remainingPart = "";
+                int fittedWidth = 0;
+                size_t wordOffset = 0;
+                while (wordOffset < wordBuffer.length())
+                {
+                    String nextChar = fontManager.getNextCharacter(wordBuffer.c_str(), wordOffset);
+                    int charWidth = fontManager.getCharacterWidth(TEXT_FONT_SIZE * 16);
+                    if (fittedWidth + charWidth <= availableWidth)
+                    {
+                        fittedPart += nextChar;
+                        fittedWidth += charWidth;
+                    }
+                    else
+                    {
+                        remainingPart += nextChar; // Add the rest to remaining
+                    }
+                }
+                lines.push_back(fittedPart); // Add the part that fits
+                currentLine = "";            // Start fresh line
+                wordBuffer = remainingPart;  // Carry over the rest of the word
             }
         }
-        y += lineHeight; // Advance Y position for the next line
+        else if (c == ' ' || c == '\t')
+        {                              // Word boundary
+            currentLine += wordBuffer; // Add word and the space/tab
+            wordBuffer = "";           // Clear word buffer
+        }
+        // else: continue accumulating characters into wordBuffer
     }
+
+    // Add any remaining content from the buffers
+    if (wordBuffer.length() > 0)
+    {
+        currentLine += wordBuffer;
+    }
+    if (currentLine.length() > 0)
+    {
+        lines.push_back(currentLine);
+    }
+
+    file.close();
+    totalLines = lines.size();
+    fileLoaded = true;
+    Serial.printf("File loaded. Total wrapped lines: %d\n", totalLines);
 }
 
+void TextViewerPage::drawContent()
+{
+    int y = BACK_BUTTON_Y + BACK_BUTTON_HEIGHT + TEXT_MARGIN_Y * 2; // Start drawing below button/header area
+    int endLine = std::min(currentScrollLine + linesPerPage, totalLines);
+
+    for (int i = currentScrollLine; i < endLine; ++i)
+    {
+        if (i >= 0 && i < lines.size())
+        { // Bounds check
+            displayManager.drawText(lines[i].c_str(), TEXT_MARGIN_X, y, TEXT_FONT_SIZE);
+        }
+        y += lineHeight;
+    }
+}
 
 void TextViewerPage::drawScrollbar()
 {
     if (totalLines <= linesPerPage)
-        return;
+        return; // No scrollbar needed
 
     int scrollbarX = SCREEN_WIDTH - SCROLLBAR_WIDTH - SCROLLBAR_MARGIN;
-    int scrollbarY = CONTENT_Y;
-    int scrollbarHeight = CONTENT_HEIGHT;
+    int scrollbarY = BACK_BUTTON_Y + BACK_BUTTON_HEIGHT + TEXT_MARGIN_Y; // Align with text area top
+    int scrollbarHeight = SCREEN_HEIGHT - scrollbarY - TEXT_MARGIN_Y;    // Align with text area bottom
 
+    // Draw scrollbar track
     displayManager.getTFT()->drawRect(scrollbarX, scrollbarY, SCROLLBAR_WIDTH, scrollbarHeight, TFT_DARKGREY);
 
-    float ratio = (totalLines > 0) ? (float)linesPerPage / totalLines : 1.0f;
-    int handleHeight = std::max(10, (int)(ratio * scrollbarHeight));
-    handleHeight = std::min(handleHeight, scrollbarHeight);
+    // Calculate handle size and position
+    int handleHeight = std::max(10, (int)((float)linesPerPage / totalLines * scrollbarHeight));
+    int handleY = scrollbarY + (int)((float)currentScrollLine / totalLines * scrollbarHeight);
+    handleHeight = std::min(handleHeight, scrollbarHeight);                   // Ensure handle doesn't exceed track
+    handleY = std::min(handleY, scrollbarY + scrollbarHeight - handleHeight); // Ensure handle stays within track
 
-    float scrollRange = (totalLines > linesPerPage) ? (float)(totalLines - linesPerPage) : 1.0f;
-    float scrollRatio = (totalLines > linesPerPage) ? (float)currentScrollLine / scrollRange : 0.0f;
-
-    int handleY = scrollbarY + (int)(scrollRatio * (scrollbarHeight - handleHeight));
-    handleY = std::max(scrollbarY, handleY);
-    handleY = std::min(handleY, scrollbarY + scrollbarHeight - handleHeight);
-
-// Use TFT_LIGHTGREY definition if available, otherwise a fallback
-#ifndef TFT_LIGHTGREY
-#define TFT_LIGHTGREY 0xD69A // Define a fallback color if not defined by TFT_eSPI
-#endif
+    // Draw scrollbar handle
     displayManager.getTFT()->fillRect(scrollbarX + 1, handleY, SCROLLBAR_WIDTH - 2, handleHeight, TFT_LIGHTGREY);
 }
 
 void TextViewerPage::handleScroll(int touchY)
 {
-    int contentTopY = CONTENT_Y;
-    int contentBottomY = SCREEN_HEIGHT - TEXT_MARGIN_Y;
-    int contentClickHeight = contentBottomY - contentTopY;
-    int midPointY = contentTopY + contentClickHeight / 2;
+    // Simple scroll: tapping top half scrolls up, bottom half scrolls down
+    int contentTopY = BACK_BUTTON_Y + BACK_BUTTON_HEIGHT + TEXT_MARGIN_Y;
+    int contentHeight = SCREEN_HEIGHT - contentTopY - TEXT_MARGIN_Y;
+    int midPointY = contentTopY + contentHeight / 2;
 
-    if (contentClickHeight <= 0)
-        return;
-
-    int scrollAmount = linesPerPage / 2;
+    int scrollAmount = linesPerPage / 2; // Scroll by half a page
     if (scrollAmount < 1)
-    {
         scrollAmount = 1;
-    }
 
     if (touchY < midPointY)
     {
+        // Scroll Up
         currentScrollLine -= scrollAmount;
     }
     else
     {
+        // Scroll Down
         currentScrollLine += scrollAmount;
     }
 
-    int maxScrollLine = 0;
-    if (totalLines > linesPerPage)
-    {
-        maxScrollLine = totalLines - linesPerPage;
-    }
+    // Clamp scroll position
     currentScrollLine = std::max(0, currentScrollLine);
-    currentScrollLine = std::min(currentScrollLine, maxScrollLine);
+    currentScrollLine = std::min(currentScrollLine, totalLines - linesPerPage);
+    // Ensure scroll position is valid if totalLines < linesPerPage
+    if (totalLines <= linesPerPage)
+    {
+        currentScrollLine = 0;
+    }
 
-    // Redraw screen after scroll
-    displayManager.clear();
+    // Redraw content and scrollbar
+    displayManager.clear(); // Need to clear for redraw
+    // Re-draw button and separator
     displayManager.getTFT()->fillRoundRect(BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 5, TFT_BLUE);
     displayManager.getTFT()->drawRoundRect(BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 5, TFT_WHITE);
     displayManager.drawCenteredText("Back", BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 1, false);
     displayManager.getTFT()->drawFastHLine(0, BACK_BUTTON_Y + BACK_BUTTON_HEIGHT + TEXT_MARGIN_Y - 1, SCREEN_WIDTH, TFT_DARKGREY);
+    // Draw scrolled content
     drawContent();
     drawScrollbar();
 }

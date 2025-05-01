@@ -1064,14 +1064,11 @@ void TextViewerPage::handleScroll(int touchY)
         displayManager.getTFT()->fillRect(scrollbarX, contentClearY, SCROLLBAR_WIDTH, contentClearHeight, TFT_BLACK); // Clear scrollbar track area
 
         // --- No need to redraw static elements ---
-        // displayManager.getTFT()->fillRoundRect(BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 5, TFT_BLUE);
-        // displayManager.getTFT()->drawRoundRect(BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 5, TFT_WHITE);
-        // displayManager.drawCenteredText("Back", BACK_BUTTON_X, BACK_BUTTON_Y, BACK_BUTTON_WIDTH, BACK_BUTTON_HEIGHT, 1, false);
-        // displayManager.getTFT()->drawFastHLine(0, BACK_BUTTON_Y + BACK_BUTTON_HEIGHT + TEXT_MARGIN_Y - 1, SCREEN_WIDTH, TFT_DARKGREY);
 
-        // Now draw the updated content and scrollbar directly into the cleared areas
-        drawContent();   // This function clears its own area, but clearing above ensures no artifacts
-        drawScrollbar(); // This function clears and redraws its area
+        // Draw the updated scrollbar FIRST for immediate feedback
+        drawScrollbar();
+        // Then draw the updated content
+        drawContent();
     }
 }
 

@@ -40,6 +40,8 @@
 #define XPT2046_CLK 25
 #define XPT2046_CS 33
 
+// 按钮引脚定义
+#define BUTTON_IO0 0 // GPIO0 按钮
 
 // SD卡引脚定义
 #define SD_CS   5     // SD卡片选

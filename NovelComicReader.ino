@@ -9,6 +9,8 @@
 #include <XPT2046_Touchscreen.h> // Re-add for direct access (needed by Touch class indirectly)
 #include <TFT_eSPI.h>         // Re-add for direct access
 
+// 布尔类型存储是否息屏 true 是开
+bool isScreenOn = true;
 
 // SPIClass touchSPI = SPIClass(TOUCH_SPI); // Removed, handled by Touch class
 SPIClass sdSPI = SPIClass(HSPI);
@@ -72,8 +74,47 @@ void setup() {
 }
 
 void loop() {
-    
-    
+    static unsigned long pressStartTime = 0; // 记录按下时间
+
+    if (digitalRead(BUTTON_IO0) == LOW)
+    { // 检测按键按下
+        if (pressStartTime == 0)
+        {
+            pressStartTime = millis(); // 记录按下的时间
+        }
+
+        if (millis() - pressStartTime >= 2000)
+        { // 长按超过 2 秒
+            Serial.println("Entering deep sleep mode...");
+            esp_deep_sleep_start();
+        }
+    }
+    else
+    { // 按键释放
+        if (pressStartTime > 0 && millis() - pressStartTime < 2000)
+        {
+            Serial.println("short click buttom");
+            // 在这里写你的普通功能
+            if (isScreenOn)
+            {
+                Serial.println("close screen");
+                digitalWrite(TFT_BL, LOW); // 关闭屏幕
+                isScreenOn = false;
+            }
+            else
+            {
+                Serial.println("open screen");
+                digitalWrite(TFT_BL, HIGH); // 开启屏幕
+                isScreenOn = true;
+            }
+        }
+        pressStartTime = 0; // 复位计时
+    }
+    if (!isScreenOn)
+    {
+        delay(100); // 如果屏幕关闭，延时避免过度占用CPU
+        return;
+    }
 
     // Check for touch input using the Touch class
     uint16_t touchX, touchY;

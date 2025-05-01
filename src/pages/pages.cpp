@@ -17,41 +17,41 @@
 
 /**
  * @brief 创建文件浏览器页面的工厂函数。
- * @return 指向新创建的 FileBrowserPage 对象的指针。
+ * @return 指向新创建的 FileBrowserPage 对象的指针 (作为 Page*)。
  */
-FileBrowserPage *createFileBrowserPage()
+Page *createFileBrowserPage() // Return Page*
 {
-    // 直接使用 new 创建 FileBrowserPage 实例
+    // 直接使用 new 创建 FileBrowserPage 实例，隐式转换为 Page*
     return new FileBrowserPage();
 }
 
 /**
  * @brief 创建图片查看器页面的工厂函数。
- * @return 指向新创建的 ImageViewerPage 对象的指针。
+ * @return 指向新创建的 ImageViewerPage 对象的指针 (作为 Page*)。
  */
-ImageViewerPage *createImageViewerPage()
+Page *createImageViewerPage() // Return Page*
 {
-    // 直接使用 new 创建 ImageViewerPage 实例
+    // 直接使用 new 创建 ImageViewerPage 实例，隐式转换为 Page*
     return new ImageViewerPage();
 }
 
 /**
  * @brief 创建文本阅读器页面的工厂函数。
- * @return 指向新创建的 TextViewerPage 对象的指针。
+ * @return 指向新创建的 TextViewerPage 对象的指针 (作为 Page*)。
  */
-TextViewerPage *createTextViewerPage()
+Page *createTextViewerPage() // Return Page*
 {
-    // 直接使用 new 创建 TextViewerPage 实例
+    // 直接使用 new 创建 TextViewerPage 实例，隐式转换为 Page*
     return new TextViewerPage();
 }
 
 
 /**
  * @brief 创建漫画阅读器页面的工厂函数。
- * @return 指向新创建的 ComicViewerPage 对象的指针。
+ * @return 指向新创建的 ComicViewerPage 对象的指针 (作为 Page*)。
  */
-ComicViewerPage *createComicViewerPage()
+Page *createComicViewerPage() // Return Page*
 {
-    // Remove singleton logic, always create a new instance
+    // Remove singleton logic, always create a new instance，隐式转换为 Page*
     return new ComicViewerPage();
 }

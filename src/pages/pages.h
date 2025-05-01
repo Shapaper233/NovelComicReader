@@ -230,27 +230,27 @@ public:
 
 /**
  * @brief 创建文件浏览器页面实例。
- * @return FileBrowserPage* 指向新实例的指针。
+ * @return Page* 指向新实例的指针 (作为基类指针)。
  */
-FileBrowserPage* createFileBrowserPage();
+Page* createFileBrowserPage(); // Return Page*
 
 /**
  * @brief 创建图片查看器页面实例。
- * @return ImageViewerPage* 指向新实例的指针。
+ * @return Page* 指向新实例的指针 (作为基类指针)。
  */
-ImageViewerPage* createImageViewerPage();
+Page* createImageViewerPage(); // Return Page*
 
 /**
  * @brief 创建文本阅读器页面实例。
- * @return TextViewerPage* 指向新实例的指针。
+ * @return Page* 指向新实例的指针 (作为基类指针)。
  */
-TextViewerPage* createTextViewerPage(); // Declaration added for consistency
+Page* createTextViewerPage(); // Return Page*
 
 /**
- * @brief 创建或获取漫画阅读器页面实例 (单例)。
- * @return ComicViewerPage* 指向实例的指针。
+ * @brief 创建漫画阅读器页面实例。
+ * @return Page* 指向新实例的指针 (作为基类指针)。
  */
-ComicViewerPage* createComicViewerPage();
+Page* createComicViewerPage(); // Return Page*
 
 
 #endif // PAGES_H

@@ -3,7 +3,6 @@
 #include "src/core/sdcard.h"
 #include "src/core/router.h"
 #include "src/pages/pages.h" // Includes base Page and factory declarations
-#include "src/pages/text_viewer_page.h" // Include full definition for TextViewerPage
 #include "src/core/touch.h"   // Include the new Touch class header
 #include "src/core/font.h"    // Include Font class header
 #include <SPI.h>              // Re-add for direct access
@@ -60,11 +59,11 @@ void setup() {
     }
     display.clear(); // Clear loading message/progress bar
     
-    // 注册页面路由
-    router.registerPage("browser", []() -> Page* { return createFileBrowserPage(); });
-    router.registerPage("viewer", []() -> Page* { return createImageViewerPage(); });
-    router.registerPage("comic", []() -> Page* { return createComicViewerPage(); });
-    router.registerPage("text", []() -> Page* { return createTextViewerPage(); }); // Register TextViewerPage
+    // 注册页面路由 (使用函数指针)
+    router.registerPage("browser", createFileBrowserPage);
+    router.registerPage("viewer", createImageViewerPage);
+    router.registerPage("comic", createComicViewerPage);
+    router.registerPage("text", createTextViewerPage); // Register TextViewerPage using function pointer
     
     // 导航到文件浏览页面
     router.navigateTo("browser");

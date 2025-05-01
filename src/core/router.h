@@ -2,7 +2,7 @@
 #define ROUTER_H
 
 #include <Arduino.h>      // 包含 Arduino 核心库 (为了 String 类型等)
-#include <functional>     // 包含 std::function，用于存储页面创建函数
+// #include <functional>  // No longer needed for std::function
 #include <vector>         // 包含 std::vector，用于存储路由历史记录
 #include <string>         // 包含 std::string，用于路由名称和历史记录
 #include <unordered_map>  // 包含 std::unordered_map，用于存储路由名称到创建函数的映射
@@ -41,8 +41,8 @@ private:
     Router() = default;
 
     std::vector<RouteHistoryItem> history; // 存储导航历史的向量
-    // 存储已注册路由的 map：页面名称 (string) -> 创建该页面实例的函数 (std::function)
-    std::unordered_map<std::string, std::function<Page *()>> routes;
+    // 存储已注册路由的 map：页面名称 (string) -> 创建该页面实例的函数指针
+    std::unordered_map<std::string, Page* (*)()> routes; // Changed to function pointer
     Page *currentPage = nullptr;         // 指向当前活动页面的指针
     std::string currentPageName;         // 当前活动页面的注册名称
     void* currentPageParams = nullptr;   // 导航到当前页面时使用的参数
@@ -63,11 +63,11 @@ public:
 
     /**
      * @brief 注册一个页面。
-     * 将页面名称与一个用于创建该页面实例的 lambda 函数或函数指针关联起来。
+     * 将页面名称与一个用于创建该页面实例的函数指针关联起来。
      * @param name 页面的唯一注册名称。
-     * @param creator 一个无参数并返回 Page* 的函数 (通常是 lambda 表达式)。
+     * @param creator 一个无参数并返回 Page* 的函数指针。
      */
-    void registerPage(const std::string &name, std::function<Page *()> creator);
+    void registerPage(const std::string &name, Page* (*creator)()); // Changed to function pointer
 
     /**
      * @brief 导航到指定名称的页面。

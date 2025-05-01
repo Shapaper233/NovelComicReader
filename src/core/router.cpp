@@ -19,10 +19,10 @@ Router& Router::getInstance()
     return *instance;
 }
 
-// 注册一个页面创建函数，并关联一个名称
-void Router::registerPage(const std::string &name, std::function<Page *()> creator)
+// 注册一个页面创建函数指针，并关联一个名称
+void Router::registerPage(const std::string &name, Page* (*creator)()) // Changed to function pointer
 {
-    // 在 routes map 中存储名称和对应的创建函数
+    // 在 routes map 中存储名称和对应的创建函数指针
     routes[name] = creator;
 }
 

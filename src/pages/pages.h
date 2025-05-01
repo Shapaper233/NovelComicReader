@@ -164,6 +164,10 @@ private:
     std::vector<String> imageFiles; // 漫画图片文件路径列表 (e.g., "1.bmp", "2.bmp")
     std::vector<int> imageHeights;  // 缓存的每张图片的高度
     int totalComicHeight;           // 缓存的所有图片的总高度
+    bool renderingInterrupted;      // 标记上次绘制是否被触摸中断
+    bool touchPending;              // 是否有待处理的触摸事件
+    uint16_t lastTouchX;            // 上次触摸的 X 坐标
+    uint16_t lastTouchY;            // 上次触摸的 Y 坐标
 
     // --- 私有辅助函数 ---
     /**
@@ -204,7 +208,7 @@ public:
     /**
      * @brief ComicViewerPage 构造函数
      */
-    ComicViewerPage();
+    ComicViewerPage() : displayManager(Display::getInstance()), sdManager(SDCard::getInstance()), touchManager(Touch::getInstance()), scrollOffset(0), totalComicHeight(0), renderingInterrupted(false), touchPending(false), lastTouchX(0), lastTouchY(0) {} // Initialize flags and coordinates
 
     /**
      * @brief 显示页面内容 (重写 Page 基类方法)

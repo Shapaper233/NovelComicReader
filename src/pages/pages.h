@@ -7,7 +7,9 @@
 // 前向声明 (Forward Declarations)
 class Page; // Forward declare Page for Router
 // Forward declaration for TextViewerPage (defined in text_viewer_page.h)
-class TextViewerPage; // Keep this if needed elsewhere, or move if possible
+class TextViewerPage;
+// Forward declaration for MenuPage
+class MenuPage;
 
 // 包含项目内其他模块的头文件
 #include "../core/router.h"    // 页面路由系统
@@ -272,6 +274,12 @@ Page* createTextViewerPage(); // Return Page*
  * @return Page* 指向新实例的指针 (作为基类指针)。
  */
 Page* createComicViewerPage(); // Return Page*
+
+/**
+ * @brief 创建菜单页面实例。
+ * @return Page* 指向新实例的指针 (作为基类指针)。
+ */
+Page* createMenuPage(); // Added factory for MenuPage
 
 
 #endif // PAGES_H

@@ -66,9 +66,10 @@ void setup() {
     router.registerPage("viewer", createImageViewerPage);
     router.registerPage("comic", createComicViewerPage);
     router.registerPage("text", createTextViewerPage); // Register TextViewerPage using function pointer
+    router.registerPage("menu", createMenuPage);       // Register MenuPage using function pointer
     
-    // 导航到文件浏览页面
-    router.navigateTo("browser");
+    // 导航到菜单页面 (设置为默认启动页面)
+    router.navigateTo("menu");
     
     Serial.println("Initialization complete!");
 }

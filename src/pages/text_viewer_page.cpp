@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include <FS.h>
-#include <algorithm>  // For std::min, std::max
-#include <TFT_eSPI.h> // Include for color constants like TFT_LIGHTGREY
-#include <SD.h>       // Include the SD library for SD.remove()
+#include <algorithm>     // For std::min, std::max
+#include <TFT_eSPI.h>    // Include for color constants like TFT_LIGHTGREY
+#include <SD.h>          // Include the SD library for SD.remove()
 #include <ArduinoJson.h> // Include ArduinoJson library
 
 #include "text_viewer_page.h"
@@ -38,7 +38,6 @@ const int NEXT_BM_BUTTON_HEIGHT = 30;
 const int NEXT_BM_BUTTON_X = BM_BUTTON_X + BM_BUTTON_WIDTH + 5;
 const int NEXT_BM_BUTTON_Y = 5;
 
-
 // Define content area based on button/header (Y position remains the same)
 const int CONTENT_Y = BACK_BUTTON_Y + BACK_BUTTON_HEIGHT + TEXT_MARGIN_Y * 2;
 const int CONTENT_HEIGHT = SCREEN_HEIGHT - CONTENT_Y - TEXT_MARGIN_Y;
@@ -54,13 +53,13 @@ TextViewerPage::TextViewerPage()
       lineHeight(0),
       fileLoaded(false),
       useCache(false) // Initialize useCache to false
-      // No comma needed after the last initializer
-      {
-          // Constructor body can be empty or used for other initializations if needed
-      }
+// No comma needed after the last initializer
+{
+    // Constructor body can be empty or used for other initializations if needed
+}
 
 // --- Private Member Variables --- (Adding detectedBookmarks here for clarity)
-    std::vector<int> detectedBookmarks; // Stores line numbers of automatically detected bookmarks
+std::vector<int> detectedBookmarks; // Stores line numbers of automatically detected bookmarks
 
 // --- Public Methods ---
 
@@ -99,52 +98,64 @@ void TextViewerPage::setParams(void *params)
     }
 }
 
-// This is the display function that was missing its closing brace
 void TextViewerPage::display()
 {
-    calculateLayout(); // Calculate layout based on font size
+    if (!fileLoaded) // fileLoaded now means "metadata calculated or loaded from cache"
+    {
+        calculateLayout(); // Calculate layout based on font size
 
-    // --- Unified JSON Cache Logic ---
-    bool loadedFromCache = false;
-    if (filePath.length() > 0) {
-        cacheFilePath = filePath + ".cacheinfo"; // Construct JSON cache file path
-        const char* originalPathCStr = filePath.c_str();
-        const char* cachePathCStr = cacheFilePath.c_str();
-        Serial.printf("DEBUG: Checking for JSON cache file: %s\n", cachePathCStr);
+        // --- Unified JSON Cache Logic ---
+        bool loadedFromCache = false;
+        if (filePath.length() > 0)
+        {
+            cacheFilePath = filePath + ".cacheinfo"; // Construct JSON cache file path
+            const char *originalPathCStr = filePath.c_str();
+            const char *cachePathCStr = cacheFilePath.c_str();
+            Serial.printf("DEBUG: Checking for JSON cache file: %s\n", cachePathCStr);
 
-        // Check if original file and JSON cache file exist
-        if (SDCard::getInstance().exists(originalPathCStr) && SDCard::getInstance().exists(cachePathCStr)) {
-            Serial.println("DEBUG: Original file and JSON cache file exist.");
-            File originalFile = SDCard::getInstance().openFile(originalPathCStr);
-            if (originalFile) {
-                size_t originalSize = originalFile.size();
-                originalFile.close(); // Close original file after getting size
+            // Check if original file and JSON cache file exist
+            if (SDCard::getInstance().exists(originalPathCStr) && SDCard::getInstance().exists(cachePathCStr))
+            {
+                Serial.println("DEBUG: Original file and JSON cache file exist.");
+                File originalFile = SDCard::getInstance().openFile(originalPathCStr);
+                if (originalFile)
+                {
+                    size_t originalSize = originalFile.size();
+                    originalFile.close(); // Close original file after getting size
 
-                // Attempt to load from JSON cache, which includes size check internally
-                if (loadMetadataFromCache(originalSize)) { // Pass original size for validation
-                    Serial.println("DEBUG: Successfully loaded metadata from JSON cache.");
-                    fileLoaded = true; // Mark as loaded
-                    loadedFromCache = true;
-                    startTimeMillis = millis(); // Set start time for potential redraws
-                } else {
-                    Serial.println("DEBUG: Failed to load metadata from JSON cache (invalid size or corrupted?). Removing cache and recalculating.");
-                    SD.remove(cachePathCStr); // Use standard SD.remove()
+                    // Attempt to load from JSON cache, which includes size check internally
+                    if (loadMetadataFromCache(originalSize))
+                    { // Pass original size for validation
+                        Serial.println("DEBUG: Successfully loaded metadata from JSON cache.");
+                        fileLoaded = true; // Mark as loaded
+                        loadedFromCache = true;
+                        startTimeMillis = millis(); // Set start time for potential redraws
+                    }
+                    else
+                    {
+                        Serial.println("DEBUG: Failed to load metadata from JSON cache (invalid size or corrupted?). Removing cache and recalculating.");
+                        SD.remove(cachePathCStr); // Use standard SD.remove()
+                    }
                 }
-            } else {
-                 Serial.println("DEBUG: Error opening original file to get size for cache validation.");
+                else
+                {
+                    Serial.println("DEBUG: Error opening original file to get size for cache validation.");
+                }
             }
-        } else {
-             Serial.printf("DEBUG: Original file (%s) or JSON cache file (%s) does not exist. Will calculate metadata.\n",
-                           originalPathCStr, cachePathCStr);
+            else
+            {
+                Serial.printf("DEBUG: Original file (%s) or JSON cache file (%s) does not exist. Will calculate metadata.\n",
+                              originalPathCStr, cachePathCStr);
+            }
+        }
+        // --- End Unified JSON Cache Logic ---
+
+        // If not loaded from cache, calculate metadata
+        if (!loadedFromCache)
+        {
+            calculateFileMetadata(); // Calculate size, total lines, and index
         }
     }
-    // --- End Unified JSON Cache Logic ---
-
-    // If not loaded from cache, calculate metadata
-    if (!loadedFromCache) {
-        calculateFileMetadata(); // Calculate size, total lines, and index
-    }
-
 
     // If metadata calculation/loading failed, the respective functions would have set fileLoaded=true
     // and potentially stored an error message in lines[0].
@@ -176,41 +187,33 @@ void TextViewerPage::display()
     displayManager.getTFT()->drawRoundRect(NEXT_BM_BUTTON_X, NEXT_BM_BUTTON_Y, NEXT_BM_BUTTON_WIDTH, NEXT_BM_BUTTON_HEIGHT, 5, TFT_WHITE);
     displayManager.drawCenteredText(">", NEXT_BM_BUTTON_X, NEXT_BM_BUTTON_Y, NEXT_BM_BUTTON_WIDTH, NEXT_BM_BUTTON_HEIGHT, 2, false); // Larger font for symbol
 
-
     // Draw Content Area Separator (remains the same Y position)
     displayManager.getTFT()->drawFastHLine(0, CONTENT_Y - TEXT_MARGIN_Y - 1, SCREEN_WIDTH, TFT_DARKGREY); // Adjusted Y slightly for clarity
 
     if (fileLoaded) // Check if metadata calculation is done
     {
         // Check if an error occurred during metadata calculation
-        if (this->errorMessage.length() > 0) { // Use this->errorMessage
-             displayManager.drawCenteredText(this->errorMessage.c_str(), 0, CONTENT_Y, SCREEN_WIDTH, CONTENT_HEIGHT, 2);
-        } else if (totalLines > 0) { // Check if metadata seems valid (just check lines now)
+        if (this->errorMessage.length() > 0)
+        { // Use this->errorMessage
+            displayManager.drawCenteredText(this->errorMessage.c_str(), 0, CONTENT_Y, SCREEN_WIDTH, CONTENT_HEIGHT, 2);
+        }
+        else if (totalLines > 0)
+        { // Check if metadata seems valid (just check lines now)
             // Only draw content and scrollbar if no error and metadata loaded
 
             // --- Draw scrollbar FIRST ---
             drawScrollbar();
             // --- Then draw content ---
             drawContent();
-
-        } else {
+        }
+        else
+        {
             // Handle case where fileLoaded is true but no lines/positions (e.g., empty file)
-             displayManager.drawCenteredText("File is empty.", 0, CONTENT_Y, SCREEN_WIDTH, CONTENT_HEIGHT, 2);
+            displayManager.drawCenteredText("File is empty.", 0, CONTENT_Y, SCREEN_WIDTH, CONTENT_HEIGHT, 2);
         }
     }
     // No explicit else needed here, as loadContent handles the initial "Loading..." or error display.
-} // <-- Added missing closing brace for display()
-
-void TextViewerPage::handleLoop() {
-    // Currently no periodic tasks needed for text viewer
-    return;
 }
-
-// Method to set the file path before displaying the page
-// This is the duplicate definition that needs to be removed.
-// void TextViewerPage::setFilePath(const String &path)
-// { ... entire duplicate function body ... }
-// Removing the duplicate function entirely.
 
 void TextViewerPage::handleTouch(uint16_t x, uint16_t y)
 {
@@ -226,7 +229,8 @@ void TextViewerPage::handleTouch(uint16_t x, uint16_t y)
     if (x >= TOP_BUTTON_X && x < TOP_BUTTON_X + TOP_BUTTON_WIDTH &&
         y >= TOP_BUTTON_Y && y < TOP_BUTTON_Y + TOP_BUTTON_HEIGHT)
     {
-        if (currentScrollLine != 0) {
+        if (currentScrollLine != 0)
+        {
             Serial.println("Top button touched. Scrolling to top.");
             currentScrollLine = 0;
             // Redraw content and scrollbar
@@ -267,7 +271,6 @@ void TextViewerPage::handleTouch(uint16_t x, uint16_t y)
         return;
     }
 
-
     // Handle Scrolling Touch (only if content is scrollable)
     if (fileLoaded && totalLines > linesPerPage) // Ensure file is loaded and scrollable
     {
@@ -293,7 +296,8 @@ void TextViewerPage::handleTouch(uint16_t x, uint16_t y)
             targetLine = std::min(targetLine, totalLines - linesPerPage);
 
             // Only redraw if the line actually changes
-            if (targetLine != currentScrollLine) {
+            if (targetLine != currentScrollLine)
+            {
                 currentScrollLine = targetLine;
                 Serial.printf("Scrollbar touched. Jumping to line: %d\n", currentScrollLine);
 
@@ -321,26 +325,33 @@ void TextViewerPage::handleTouch(uint16_t x, uint16_t y)
 // --- Private Helper Methods ---
 
 // Helper function to format bytes into KB/MB
-String formatBytes(size_t bytes) {
-    if (bytes < 1024) {
+String formatBytes(size_t bytes)
+{
+    if (bytes < 1024)
+    {
         return String(bytes) + " B";
-    } else if (bytes < 1024 * 1024) {
+    }
+    else if (bytes < 1024 * 1024)
+    {
         return String(bytes / 1024.0, 1) + " KB";
-    } else {
+    }
+    else
+    {
         return String(bytes / (1024.0 * 1024.0), 1) + " MB";
     }
 }
 
 // Helper function to format seconds into MM:SS
-String formatETC(unsigned long seconds) {
-    if (seconds == 0) return "--:--";
+String formatETC(unsigned long seconds)
+{
+    if (seconds == 0)
+        return "--:--";
     unsigned long minutes = seconds / 60;
     seconds %= 60;
     char buffer[6]; // MM:SS + null terminator
     snprintf(buffer, sizeof(buffer), "%02lu:%02lu", minutes, seconds);
     return String(buffer);
 }
-
 
 void TextViewerPage::updateLoadingProgress(size_t currentBytes, size_t totalBytes, int currentLineCount, unsigned long elapsedMillis)
 {
@@ -358,21 +369,22 @@ void TextViewerPage::updateLoadingProgress(size_t currentBytes, size_t totalByte
     // Clear area for top-left info text
     displayManager.getTFT()->fillRect(0, 0, SCREEN_WIDTH, 20, TFT_BLACK); // Clear top area for info text
     // Clear area for progress bar and percentage text below it
-    int clearBarAreaY = barY; // Start clearing at the bar's top
+    int clearBarAreaY = barY;                // Start clearing at the bar's top
     int clearBarAreaHeight = barHeight + 25; // Height to clear (bar + percentage text area below)
     displayManager.getTFT()->fillRect(barX - 5, clearBarAreaY, barWidth + 10, clearBarAreaHeight, TFT_BLACK);
 
     // --- Calculate ETC ---
     unsigned long etcSeconds = 0;
-    if (currentBytes > 0 && elapsedMillis > 100) { // Avoid division by zero and unstable early values
+    if (currentBytes > 0 && elapsedMillis > 100)
+    { // Avoid division by zero and unstable early values
         float bytesPerSecond = (float)currentBytes / (elapsedMillis / 1000.0f);
-        if (bytesPerSecond > 0) {
+        if (bytesPerSecond > 0)
+        {
             size_t remainingBytes = totalBytes - currentBytes;
             etcSeconds = (unsigned long)(remainingBytes / bytesPerSecond);
         }
     }
     String etcText = "ETC: " + formatETC(etcSeconds);
-
 
     // --- Draw Top-Left Info Text (Size, Lines, ETC) ---
     String sizeText = "Size: " + formatBytes(totalBytes);
@@ -388,13 +400,14 @@ void TextViewerPage::updateLoadingProgress(size_t currentBytes, size_t totalByte
 
     // Draw filled portion of the progress bar
     int fillWidth = (int)(((float)percentage / 100) * (barWidth - 4)); // Inner width, leave border
-    if (fillWidth > 0) {
+    if (fillWidth > 0)
+    {
         displayManager.getTFT()->fillRect(barX + 2, barY + 2, fillWidth, barHeight - 4, TFT_BLUE);
     }
 
     // Draw percentage text further below the bar
     String progressText = String(percentage) + "%";
-    int textY = barY + barHeight + 8; // Increased spacing below bar (was 5)
+    int textY = barY + barHeight + 8;                                                            // Increased spacing below bar (was 5)
     displayManager.drawCenteredText(progressText.c_str(), 0, textY, SCREEN_WIDTH, 20, 2, false); // Use font size 2, built-in font
 
     // Optional: Force display update if needed, though TFT_eSPI usually updates automatically
@@ -405,11 +418,12 @@ void TextViewerPage::calculateLayout()
 {
     // Use font size 1 (16x16) for calculations
     lineHeight = fontManager.getCharacterHeight(TEXT_FONT_SIZE * 16); // Assuming size 1 maps to 16px font
-    if (lineHeight <= 0) // Check if lineHeight is valid
-        lineHeight = 16; // Fallback if font not loaded yet or invalid size
+    if (lineHeight <= 0)                                              // Check if lineHeight is valid
+        lineHeight = 16;                                              // Fallback if font not loaded yet or invalid size
 
     int availableHeight = CONTENT_HEIGHT; // Use defined content height
-    if (availableHeight <= 0) availableHeight = 1; // Prevent division by zero
+    if (availableHeight <= 0)
+        availableHeight = 1; // Prevent division by zero
 
     linesPerPage = availableHeight / lineHeight;
     if (linesPerPage < 1)
@@ -422,10 +436,10 @@ void TextViewerPage::calculateFileMetadata()
 {
     lineIndex.clear(); // Clear previous index
     currentScrollLine = 0;
-    totalLines = 0; // Reset total lines count
-    fileLoaded = false; // Set to false initially
+    totalLines = 0;             // Reset total lines count
+    fileLoaded = false;         // Set to false initially
     startTimeMillis = millis(); // Record start time for ETC
-    detectedBookmarks.clear(); // Clear previously detected bookmarks
+    detectedBookmarks.clear();  // Clear previously detected bookmarks
 
     const char *pathCStr = filePath.c_str();
 
@@ -436,9 +450,10 @@ void TextViewerPage::calculateFileMetadata()
 
     if (!SDCard::getInstance().exists(pathCStr))
     {
-        Serial.print("Error: File not found: "); Serial.println(pathCStr);
+        Serial.print("Error: File not found: ");
+        Serial.println(pathCStr);
         this->errorMessage = "Error: File not found."; // Store in member variable
-        fileLoaded = true; // Mark as loaded (with error)
+        fileLoaded = true;                             // Mark as loaded (with error)
         // lineStartPositions.clear(); // No longer needed
         totalLines = 0; // No lines calculated
         return;
@@ -447,9 +462,10 @@ void TextViewerPage::calculateFileMetadata()
     File file = SDCard::getInstance().openFile(pathCStr);
     if (!file)
     {
-        Serial.print("Error: Could not open file: "); Serial.println(pathCStr);
+        Serial.print("Error: Could not open file: ");
+        Serial.println(pathCStr);
         this->errorMessage = "Error: Could not open file."; // Store in member variable
-        fileLoaded = true; // Mark as loaded (with error)
+        fileLoaded = true;                                  // Mark as loaded (with error)
         // lineStartPositions.clear(); // No longer needed
         totalLines = 0;
         return;
@@ -465,18 +481,19 @@ void TextViewerPage::calculateFileMetadata()
     lineIndex[0] = 0; // First line always starts at position 0
 
     // --- Initial progress display ---
-    displayManager.clear(); // Clear screen for loading progress
+    displayManager.clear();                                  // Clear screen for loading progress
     updateLoadingProgress(0, totalSize, calculatedLines, 0); // Show 0 lines, 0 elapsed initially
-    yield(); // Allow display to update
+    yield();                                                 // Allow display to update
 
-    Serial.print("Loading file: "); Serial.println(pathCStr); // Log start of loading
+    Serial.print("Loading file: ");
+    Serial.println(pathCStr); // Log start of loading
 
     int availableWidth = SCREEN_WIDTH - TEXT_MARGIN_X * 2 - SCROLLBAR_WIDTH - SCROLLBAR_MARGIN;
     if (availableWidth <= 0)
     {
         Serial.println("Error: Screen too narrow for text.");
         this->errorMessage = "Error: Screen too narrow."; // Store in member variable
-        fileLoaded = true; // Mark as loaded (with error)
+        fileLoaded = true;                                // Mark as loaded (with error)
         // lineStartPositions.clear(); // No longer needed
         totalLines = 0;
         file.close();
@@ -487,18 +504,24 @@ void TextViewerPage::calculateFileMetadata()
     String wordBuffer = "";
 
     // Define the width calculation lambda function *before* the loop
-    auto calculateStringWidth = [&](const String& s) -> int {
+    auto calculateStringWidth = [&](const String &s) -> int
+    {
         int totalWidth = 0;
         size_t offset = 0;
         uint16_t baseSize = TEXT_FONT_SIZE * 16; // Base size (e.g., 16)
-        while (offset < s.length()) {
+        while (offset < s.length())
+        {
             String nextCharStr = fontManager.getNextCharacter(s.c_str(), offset);
-            if (nextCharStr.length() > 0) {
+            if (nextCharStr.length() > 0)
+            {
                 // Estimate width: ASCII ~ half, Non-ASCII ~ full
-                if (fontManager.isAscii(nextCharStr.c_str())) {
+                if (fontManager.isAscii(nextCharStr.c_str()))
+                {
                     totalWidth += baseSize / 2; // Estimate ASCII width as half
-                } else {
-                    totalWidth += baseSize;     // Estimate Non-ASCII width as full
+                }
+                else
+                {
+                    totalWidth += baseSize; // Estimate Non-ASCII width as full
                 }
             }
         }
@@ -511,30 +534,36 @@ void TextViewerPage::calculateFileMetadata()
 
         // --- Periodic Progress Update (Time-based) ---
         unsigned long currentMillis = millis();
-        if (currentMillis - lastProgressUpdateMillis >= 100) { // Update every 20ms
+        if (currentMillis - lastProgressUpdateMillis >= 100)
+        { // Update every 20ms
             updateLoadingProgress(file.position(), totalSize, calculatedLines, currentMillis - startTimeMillis);
             lastProgressUpdateMillis = currentMillis; // Record time of this update
-            yield(); // Allow other tasks (like display updates) to run
+            yield();                                  // Allow other tasks (like display updates) to run
         }
         // --- End Progress Update ---
-
 
         // Handle line breaks first (CRLF, LF, CR)
         if (c == '\n' || c == '\r')
         {
-            if (c == '\r' && file.peek() == '\n') {
+            if (c == '\r' && file.peek() == '\n')
+            {
                 file.read(); // Consume the '\n' for CRLF
             }
 
             // Process the completed line (including the last word buffer content)
             // size_t lineStartPosition = file.position(); // No longer storing positions
 
-            if (wordBuffer.length() > 0) {
-                if (calculateStringWidth(currentLine) + calculateStringWidth(wordBuffer) <= availableWidth) {
+            if (wordBuffer.length() > 0)
+            {
+                if (calculateStringWidth(currentLine) + calculateStringWidth(wordBuffer) <= availableWidth)
+                {
                     currentLine += wordBuffer;
-                } else {
+                }
+                else
+                {
                     // Final word doesn't fit, count the line without it
-                    if (currentLine.length() > 0) {
+                    if (currentLine.length() > 0)
+                    {
                         calculatedLines++;
                         // Position for the *next* line (the wordBuffer) is tricky, estimate based on current char pos?
                         // For simplicity, we'll store the position *after* the newline for now.
@@ -548,24 +577,29 @@ void TextViewerPage::calculateFileMetadata()
             // --- Bookmark Detection ---
             String fullLineContent = currentLine; // Check the line content before resetting
             int bookmarkIndex = fullLineContent.indexOf("%书签标志%");
-            if (bookmarkIndex != -1) {
-                 Serial.printf("DEBUG: Found '%%书签标志%%' in line content: '%s' at index %d\n", fullLineContent.c_str(), bookmarkIndex);
-                 if (detectedBookmarks.empty() || detectedBookmarks.back() != calculatedLines) { // Avoid duplicates for same line
+            if (bookmarkIndex != -1)
+            {
+                Serial.printf("DEBUG: Found '%%书签标志%%' in line content: '%s' at index %d\n", fullLineContent.c_str(), bookmarkIndex);
+                if (detectedBookmarks.empty() || detectedBookmarks.back() != calculatedLines)
+                { // Avoid duplicates for same line
                     detectedBookmarks.push_back(calculatedLines);
                     Serial.printf("DEBUG: Added detected bookmark for line: %d. Total detected: %u\n", calculatedLines, detectedBookmarks.size());
-                 } else {
+                }
+                else
+                {
                     Serial.printf("DEBUG: Duplicate bookmark marker detected for line: %d. Skipping add.\n", calculatedLines);
-                 }
+                }
             }
             // --- End Bookmark Detection ---
 
             // Store index point if interval is reached
-            if (calculatedLines % INDEX_INTERVAL == 0) {
+            if (calculatedLines % INDEX_INTERVAL == 0)
+            {
                 // Store the position *after* the newline, which is the start of the next line
                 lineIndex[calculatedLines] = file.position();
             }
-            currentLine = "";             // Reset for the next line from the file
-            continue; // Move to next character from file
+            currentLine = ""; // Reset for the next line from the file
+            continue;         // Move to next character from file
         }
 
         // If it's not a newline, process the character for word wrapping
@@ -580,10 +614,13 @@ void TextViewerPage::calculateFileMetadata()
         if (currentLinePixelWidth + wordBufferPlusCharWidth > availableWidth)
         {
             // Subcase 1.1: The current line already has content.
-            if (currentLine.length() > 0) {
+            if (currentLine.length() > 0)
+            {
                 // --- Bookmark Detection ---
-                if (currentLine.indexOf("%书签标志%") != -1) {
-                    if (detectedBookmarks.empty() || detectedBookmarks.back() != calculatedLines) {
+                if (currentLine.indexOf("%书签标志%") != -1)
+                {
+                    if (detectedBookmarks.empty() || detectedBookmarks.back() != calculatedLines)
+                    {
                         detectedBookmarks.push_back(calculatedLines);
                         Serial.printf("Detected bookmark marker at wrapped line: %d\n", calculatedLines);
                     }
@@ -592,7 +629,8 @@ void TextViewerPage::calculateFileMetadata()
                 // Count the current line (without the word buffer)
                 calculatedLines++;
                 // Store index point if interval is reached
-                if (calculatedLines % INDEX_INTERVAL == 0) {
+                if (calculatedLines % INDEX_INTERVAL == 0)
+                {
                     // Position is tricky here. It's the start of the wordBuffer line.
                     // Estimate based on current file position minus the buffer length + char we just read.
                     lineIndex[calculatedLines] = file.position() - (wordBuffer.length() + 1);
@@ -601,12 +639,14 @@ void TextViewerPage::calculateFileMetadata()
                 currentLine = wordBuffer;
                 wordBuffer = ""; // Clear word buffer
                 // Start new word buffer with the current character 'c' (unless it's leading whitespace)
-                if (c != ' ' && c != '\t') {
-                     wordBuffer += c;
+                if (c != ' ' && c != '\t')
+                {
+                    wordBuffer += c;
                 }
             }
             // Subcase 1.2: The current line is empty, meaning the word buffer itself (plus 'c') is too long.
-            else {
+            else
+            {
                 // We need to break the word buffer itself.
                 String fittedPart = "";
                 String remainingPart = "";
@@ -615,69 +655,88 @@ void TextViewerPage::calculateFileMetadata()
                 uint16_t baseSize = TEXT_FONT_SIZE * 16;
 
                 // Iterate through the *existing* wordBuffer to see what fits
-                while(wordOffset < wordBuffer.length()) {
+                while (wordOffset < wordBuffer.length())
+                {
                     String nextCharStr = fontManager.getNextCharacter(wordBuffer.c_str(), wordOffset);
-                    if (nextCharStr.length() > 0) {
+                    if (nextCharStr.length() > 0)
+                    {
                         int charWidth = fontManager.isAscii(nextCharStr.c_str()) ? (baseSize / 2) : baseSize;
-                        if (fittedWidth + charWidth <= availableWidth) {
+                        if (fittedWidth + charWidth <= availableWidth)
+                        {
                             fittedPart += nextCharStr;
                             fittedWidth += charWidth;
-                        } else {
+                        }
+                        else
+                        {
                             // Character doesn't fit, the rest goes to remainingPart
                             // Correctly get the substring from the *start* of the character that didn't fit
                             remainingPart = wordBuffer.substring(wordOffset - nextCharStr.length());
                             break;
                         }
-                    } else {
+                    }
+                    else
+                    {
                         break; // End of word buffer string
                     }
                 }
 
                 // Add the part that fits (if any)
-                if (fittedPart.length() > 0) {
+                if (fittedPart.length() > 0)
+                {
                     // --- Bookmark Detection ---
-                    if (fittedPart.indexOf("%书签标志%") != -1) {
-                         if (detectedBookmarks.empty() || detectedBookmarks.back() != calculatedLines) {
+                    if (fittedPart.indexOf("%书签标志%") != -1)
+                    {
+                        if (detectedBookmarks.empty() || detectedBookmarks.back() != calculatedLines)
+                        {
                             detectedBookmarks.push_back(calculatedLines);
                             Serial.printf("Detected bookmark marker at hard-wrapped line: %d\n", calculatedLines);
-                         }
+                        }
                     }
                     // --- End Bookmark Detection ---
                     calculatedLines++; // Count the fitted part as a line
                     // Store index point if interval is reached
-                    if (calculatedLines % INDEX_INTERVAL == 0) {
+                    if (calculatedLines % INDEX_INTERVAL == 0)
+                    {
                         // Position is start of remainingPart line. Estimate.
-                         lineIndex[calculatedLines] = file.position() - (remainingPart.length() + 1);
+                        lineIndex[calculatedLines] = file.position() - (remainingPart.length() + 1);
                     }
                 }
                 // The remaining part becomes the new word buffer, starting with the current char 'c' (unless whitespace)
                 wordBuffer = remainingPart;
-                if (c != ' ' && c != '\t') {
-                     wordBuffer += c;
+                if (c != ' ' && c != '\t')
+                {
+                    wordBuffer += c;
                 }
                 currentLine = ""; // Ensure current line is empty
             }
         }
         // Case 2: Adding the character doesn't exceed the width
-        else {
+        else
+        {
             // Add the character to the word buffer
             wordBuffer += c;
 
             // If the character is a word separator (space/tab), add the word buffer to the current line
-            if (c == ' ' || c == '\t') {
+            if (c == ' ' || c == '\t')
+            {
                 // Check if adding the word buffer (including space) fits
-                if (calculateStringWidth(currentLine) + calculateStringWidth(wordBuffer) <= availableWidth) {
+                if (calculateStringWidth(currentLine) + calculateStringWidth(wordBuffer) <= availableWidth)
+                {
                     currentLine += wordBuffer; // Add word buffer (including the space/tab)
                     wordBuffer = "";           // Clear word buffer for the next word
-                } else {
+                }
+                else
+                {
                     // Word buffer with space doesn't fit. Count current line.
-                    if (currentLine.length() > 0) {
-                         calculatedLines++;
-                         // Store index point if interval is reached
-                         if (calculatedLines % INDEX_INTERVAL == 0) {
-                             // Position is start of wordBuffer line. Estimate.
-                             lineIndex[calculatedLines] = file.position() - (wordBuffer.length() + 1);
-                         }
+                    if (currentLine.length() > 0)
+                    {
+                        calculatedLines++;
+                        // Store index point if interval is reached
+                        if (calculatedLines % INDEX_INTERVAL == 0)
+                        {
+                            // Position is start of wordBuffer line. Estimate.
+                            lineIndex[calculatedLines] = file.position() - (wordBuffer.length() + 1);
+                        }
                     }
                     // Start new line with the word buffer (including space)
                     currentLine = wordBuffer;
@@ -695,55 +754,70 @@ void TextViewerPage::calculateFileMetadata()
     // delay(100); // Optional: delay 100ms to ensure 100% is visible
 
     // Add any remaining content from the buffers after the loop finishes
-    if (wordBuffer.length() > 0) {
+    if (wordBuffer.length() > 0)
+    {
         // Check if the final word fits on the last line
-        if (calculateStringWidth(currentLine) + calculateStringWidth(wordBuffer) <= availableWidth) {
+        if (calculateStringWidth(currentLine) + calculateStringWidth(wordBuffer) <= availableWidth)
+        {
             currentLine += wordBuffer;
-        } else {
+        }
+        else
+        {
             // Doesn't fit, count the current line (if any)
-            if (currentLine.length() > 0) {
+            if (currentLine.length() > 0)
+            {
                 calculatedLines++;
-                 // Store index point if interval is reached
-                 if (calculatedLines % INDEX_INTERVAL == 0) {
-                     // Position is start of wordBuffer line. Estimate.
-                     lineIndex[calculatedLines] = file.position() - wordBuffer.length();
-                 }
+                // Store index point if interval is reached
+                if (calculatedLines % INDEX_INTERVAL == 0)
+                {
+                    // Position is start of wordBuffer line. Estimate.
+                    lineIndex[calculatedLines] = file.position() - wordBuffer.length();
+                }
             }
             currentLine = wordBuffer; // Word buffer becomes the last line
-                 }
+        }
+    }
+    // Count the very last line if it has content
+    if (currentLine.length() > 0)
+    {
+        // --- Bookmark Detection ---
+        int finalBookmarkIndex = currentLine.indexOf("%书签标志%");
+        if (finalBookmarkIndex != -1)
+        {
+            Serial.printf("DEBUG: Found '%%书签标志%%' in final line content: '%s' at index %d\n", currentLine.c_str(), finalBookmarkIndex);
+            if (detectedBookmarks.empty() || detectedBookmarks.back() != calculatedLines)
+            {
+                detectedBookmarks.push_back(calculatedLines);
+                Serial.printf("DEBUG: Added detected bookmark for final line: %d. Total detected: %u\n", calculatedLines, detectedBookmarks.size());
             }
-            // Count the very last line if it has content
-            if (currentLine.length() > 0) {
-                 // --- Bookmark Detection ---
-                 int finalBookmarkIndex = currentLine.indexOf("%书签标志%");
-                 if (finalBookmarkIndex != -1) {
-                     Serial.printf("DEBUG: Found '%%书签标志%%' in final line content: '%s' at index %d\n", currentLine.c_str(), finalBookmarkIndex);
-                     if (detectedBookmarks.empty() || detectedBookmarks.back() != calculatedLines) {
-                        detectedBookmarks.push_back(calculatedLines);
-                        Serial.printf("DEBUG: Added detected bookmark for final line: %d. Total detected: %u\n", calculatedLines, detectedBookmarks.size());
-                     } else {
-                         Serial.printf("DEBUG: Duplicate bookmark marker detected for final line: %d. Skipping add.\n", calculatedLines);
-                     }
-                 }
-                 // --- End Bookmark Detection ---
-                calculatedLines++;
-                 // Store index point if interval is reached (unlikely for the very last line, but check)
-                 if (calculatedLines % INDEX_INTERVAL == 0) {
-             // Position is tricky, maybe store end of file? Or just rely on previous index.
-             // Let's not store an index for the very last partial line.
-         }
+            else
+            {
+                Serial.printf("DEBUG: Duplicate bookmark marker detected for final line: %d. Skipping add.\n", calculatedLines);
+            }
+        }
+        // --- End Bookmark Detection ---
+        calculatedLines++;
+        // Store index point if interval is reached (unlikely for the very last line, but check)
+        if (calculatedLines % INDEX_INTERVAL == 0)
+        {
+            // Position is tricky, maybe store end of file? Or just rely on previous index.
+            // Let's not store an index for the very last partial line.
+        }
     }
 
     file.close();
     totalLines = calculatedLines; // Store the final calculated count
-    fileLoaded = true; // Mark metadata as calculated *after* processing
+    fileLoaded = true;            // Mark metadata as calculated *after* processing
     Serial.printf("File metadata calculated. Total wrapped lines: %d. Index points: %d\n", totalLines, lineIndex.size());
 
     // If calculation was successful (no error message), save to cache
-    if (this->errorMessage.length() == 0 && totalLines > 0) {
+    if (this->errorMessage.length() == 0 && totalLines > 0)
+    {
         Serial.printf("DEBUG: Metadata calculation finished. Detected bookmarks count: %u. Calling saveMetadataToCache.\n", detectedBookmarks.size());
         saveMetadataToCache();
-    } else {
+    }
+    else
+    {
         Serial.printf("DEBUG: Metadata calculation finished. Error: '%s', Total Lines: %d. Skipping saveMetadataToCache.\n", this->errorMessage.c_str(), totalLines);
     }
 }
@@ -751,26 +825,28 @@ void TextViewerPage::calculateFileMetadata()
 // Refactored drawContent: Reads file on demand, wraps, and draws visible lines.
 void TextViewerPage::drawContent()
 {
-    int y = CONTENT_Y; // Starting Y position for drawing text
+    int y = CONTENT_Y;  // Starting Y position for drawing text
     int linesDrawn = 0; // Counter for lines drawn on the current screen
 
     // Clear the content area before drawing new text
     displayManager.getTFT()->fillRect(TEXT_MARGIN_X, y,
                                       SCREEN_WIDTH - TEXT_MARGIN_X * 2 - SCROLLBAR_WIDTH - SCROLLBAR_MARGIN,
                                       CONTENT_HEIGHT, // Use calculated content height
-                                      TFT_BLACK); // Assuming black background
+                                      TFT_BLACK);     // Assuming black background
 
     // --- File Reading and On-the-Fly Wrapping/Drawing ---
     const char *pathCStr = filePath.c_str();
     File file = SDCard::getInstance().openFile(pathCStr);
-    if (!file) {
+    if (!file)
+    {
         // Should not happen if calculateFileMetadata succeeded, but handle defensively
         displayManager.drawText("Error: Cannot reopen file.", TEXT_MARGIN_X, y, TEXT_FONT_SIZE, true);
         return;
     }
 
     int availableWidth = SCREEN_WIDTH - TEXT_MARGIN_X * 2 - SCROLLBAR_WIDTH - SCROLLBAR_MARGIN;
-    if (availableWidth <= 0) {
+    if (availableWidth <= 0)
+    {
         displayManager.drawText("Error: Screen too narrow.", TEXT_MARGIN_X, y, TEXT_FONT_SIZE, true);
         file.close();
         return;
@@ -778,10 +854,12 @@ void TextViewerPage::drawContent()
 
     // --- Check if metadata is loaded ---
     // Also check if an error occurred during loading and if scroll line is valid
-    if (!fileLoaded || this->errorMessage.length() > 0 || currentScrollLine < 0 || (totalLines > 0 && currentScrollLine >= totalLines)) {
+    if (!fileLoaded || this->errorMessage.length() > 0 || currentScrollLine < 0 || (totalLines > 0 && currentScrollLine >= totalLines))
+    {
         String errorToShow = (this->errorMessage.length() > 0) ? this->errorMessage : "Error: Invalid state or scroll position.";
         displayManager.drawText(errorToShow.c_str(), TEXT_MARGIN_X, y, TEXT_FONT_SIZE, true);
-        if (file) file.close();
+        if (file)
+            file.close();
         return;
     }
 
@@ -790,7 +868,8 @@ void TextViewerPage::drawContent()
     size_t seekPos = 0;
     // Find the largest index key less than or equal to currentScrollLine
     auto it = lineIndex.upper_bound(currentScrollLine); // Find first element *greater* than currentScrollLine
-    if (it != lineIndex.begin()) {
+    if (it != lineIndex.begin())
+    {
         --it; // Go back to the element less than or equal to currentScrollLine
         seekLine = it->first;
         seekPos = it->second;
@@ -799,7 +878,8 @@ void TextViewerPage::drawContent()
 
     Serial.printf("DrawContent: Target line %d. Seeking to index line %d at pos %u\n", currentScrollLine, seekLine, seekPos);
 
-    if (!file.seek(seekPos)) {
+    if (!file.seek(seekPos))
+    {
         Serial.printf("Error: Failed to seek to index position %u\n", seekPos);
         displayManager.drawText("Error: Seek failed.", TEXT_MARGIN_X, y, TEXT_FONT_SIZE, true);
         file.close();
@@ -812,16 +892,22 @@ void TextViewerPage::drawContent()
     int linesProcessedSoFar = seekLine; // Start counting from the line we seeked to
 
     // Re-use the width calculation lambda
-    auto calculateStringWidth = [&](const String& s) -> int {
+    auto calculateStringWidth = [&](const String &s) -> int
+    {
         int totalWidth = 0;
         size_t offset = 0;
         uint16_t baseSize = TEXT_FONT_SIZE * 16;
-        while (offset < s.length()) {
+        while (offset < s.length())
+        {
             String nextCharStr = fontManager.getNextCharacter(s.c_str(), offset);
-            if (nextCharStr.length() > 0) {
-                if (fontManager.isAscii(nextCharStr.c_str())) {
+            if (nextCharStr.length() > 0)
+            {
+                if (fontManager.isAscii(nextCharStr.c_str()))
+                {
                     totalWidth += baseSize / 2;
-                } else {
+                }
+                else
+                {
                     totalWidth += baseSize;
                 }
             }
@@ -830,13 +916,15 @@ void TextViewerPage::drawContent()
     };
 
     // Lambda to draw a line *if* it's within the visible range
-    auto drawVisibleLine = [&](const String& lineToDraw) {
-        if (linesProcessedSoFar >= currentScrollLine && linesDrawn < linesPerPage) {
+    auto drawVisibleLine = [&](const String &lineToDraw)
+    {
+        if (linesProcessedSoFar >= currentScrollLine && linesDrawn < linesPerPage)
+        {
             displayManager.drawText(lineToDraw.c_str(), TEXT_MARGIN_X, y + (linesDrawn * lineHeight), TEXT_FONT_SIZE, true);
             linesDrawn++;
         }
-         linesProcessedSoFar++; // Increment *after* checking visibility
-     };
+        linesProcessedSoFar++; // Increment *after* checking visibility
+    };
 
     // bool touchDetected = false; // REMOVED: Flag for touch interruption
 
@@ -851,19 +939,26 @@ void TextViewerPage::drawContent()
         char c = file.read();
 
         // Handle line breaks first (CRLF, LF, CR)
-        if (c == '\n' || c == '\r') {
-            if (c == '\r' && file.peek() == '\n') {
+        if (c == '\n' || c == '\r')
+        {
+            if (c == '\r' && file.peek() == '\n')
+            {
                 file.read(); // Consume the '\n' for CRLF
             }
 
             // Process the completed line (including the last word buffer content)
-            if (wordBuffer.length() > 0) {
-                if (calculateStringWidth(currentLine) + calculateStringWidth(wordBuffer) <= availableWidth) {
+            if (wordBuffer.length() > 0)
+            {
+                if (calculateStringWidth(currentLine) + calculateStringWidth(wordBuffer) <= availableWidth)
+                {
                     currentLine += wordBuffer;
-                } else {
+                }
+                else
+                {
                     // Word doesn't fit after newline
-                    if (currentLine.length() > 0) drawVisibleLine(currentLine); // Draw previous line if not empty
-                    currentLine = wordBuffer; // Word becomes the new line
+                    if (currentLine.length() > 0)
+                        drawVisibleLine(currentLine); // Draw previous line if not empty
+                    currentLine = wordBuffer;         // Word becomes the new line
                 }
                 wordBuffer = "";
             }
@@ -878,71 +973,96 @@ void TextViewerPage::drawContent()
         int wordBufferPlusCharWidth = calculateStringWidth(wordBuffer + c);
 
         // Case 1: Adding the current character makes the word buffer exceed the line width
-        if (currentLinePixelWidth + wordBufferPlusCharWidth > availableWidth) {
+        if (currentLinePixelWidth + wordBufferPlusCharWidth > availableWidth)
+        {
             // Subcase 1.1: The current line already has content.
-            if (currentLine.length() > 0) {
+            if (currentLine.length() > 0)
+            {
                 drawVisibleLine(currentLine); // Draw the current line
                 currentLine = wordBuffer;     // Start new line with word buffer
                 wordBuffer = "";
-                if (c != ' ' && c != '\t') wordBuffer += c; // Start new word buffer unless whitespace
+                if (c != ' ' && c != '\t')
+                    wordBuffer += c; // Start new word buffer unless whitespace
             }
             // Subcase 1.2: The current line is empty (long word needs breaking).
-            else {
+            else
+            {
                 String fittedPart = "";
                 String remainingPart = "";
                 int fittedWidth = 0;
                 size_t wordOffset = 0;
                 uint16_t baseSize = TEXT_FONT_SIZE * 16;
-                while(wordOffset < wordBuffer.length()) {
-                     String nextCharStr = fontManager.getNextCharacter(wordBuffer.c_str(), wordOffset);
-                     if (nextCharStr.length() > 0) {
+                while (wordOffset < wordBuffer.length())
+                {
+                    String nextCharStr = fontManager.getNextCharacter(wordBuffer.c_str(), wordOffset);
+                    if (nextCharStr.length() > 0)
+                    {
                         int charWidth = fontManager.isAscii(nextCharStr.c_str()) ? (baseSize / 2) : baseSize;
-                        if (fittedWidth + charWidth <= availableWidth) {
+                        if (fittedWidth + charWidth <= availableWidth)
+                        {
                             fittedPart += nextCharStr;
                             fittedWidth += charWidth;
-                        } else {
+                        }
+                        else
+                        {
                             remainingPart = wordBuffer.substring(wordOffset - nextCharStr.length());
                             break;
                         }
-                    } else break;
+                    }
+                    else
+                        break;
                 }
-                if (fittedPart.length() > 0) drawVisibleLine(fittedPart); // Draw the fitted part
+                if (fittedPart.length() > 0)
+                    drawVisibleLine(fittedPart); // Draw the fitted part
                 wordBuffer = remainingPart;
-                if (c != ' ' && c != '\t') wordBuffer += c; // Start new word buffer unless whitespace
+                if (c != ' ' && c != '\t')
+                    wordBuffer += c; // Start new word buffer unless whitespace
                 currentLine = "";
             }
         }
         // Case 2: Adding the character doesn't exceed the width
-        else {
+        else
+        {
             wordBuffer += c;
-            if (c == ' ' || c == '\t') {
-                if (calculateStringWidth(currentLine) + calculateStringWidth(wordBuffer) <= availableWidth) {
+            if (c == ' ' || c == '\t')
+            {
+                if (calculateStringWidth(currentLine) + calculateStringWidth(wordBuffer) <= availableWidth)
+                {
                     currentLine += wordBuffer;
                     wordBuffer = "";
-                } else {
+                }
+                else
+                {
                     // Word buffer with space doesn't fit. Count current line.
-                    if (currentLine.length() > 0) drawVisibleLine(currentLine); // Draw current line
-                    currentLine = wordBuffer; // Start new line with word buffer (incl. space)
+                    if (currentLine.length() > 0)
+                        drawVisibleLine(currentLine); // Draw current line
+                    currentLine = wordBuffer;         // Start new line with word buffer (incl. space)
                     wordBuffer = "";
                 }
             }
         }
-         // Optimization: If we've already processed enough lines to get past the visible area,
-         // we could potentially break early, but the file.available() check handles this.
+        // Optimization: If we've already processed enough lines to get past the visible area,
+        // we could potentially break early, but the file.available() check handles this.
     } // End while
 
     // Draw any remaining content from the buffers after the loop finishes
-    if (wordBuffer.length() > 0) {
-        if (calculateStringWidth(currentLine) + calculateStringWidth(wordBuffer) <= availableWidth) {
+    if (wordBuffer.length() > 0)
+    {
+        if (calculateStringWidth(currentLine) + calculateStringWidth(wordBuffer) <= availableWidth)
+        {
             currentLine += wordBuffer;
-        } else {
+        }
+        else
+        {
             // Doesn't fit, count the current line (if any) and add the word buffer as a new line
-            if (currentLine.length() > 0) drawVisibleLine(currentLine);
+            if (currentLine.length() > 0)
+                drawVisibleLine(currentLine);
             currentLine = wordBuffer; // Word buffer becomes the last line
         }
     }
     // Draw the very last line if it has content and we haven't filled the page yet
-    if (currentLine.length() > 0) {
+    if (currentLine.length() > 0)
+    {
         drawVisibleLine(currentLine); // Draw the very last line if needed
     }
 
@@ -958,14 +1078,13 @@ void TextViewerPage::drawContent()
     // drawScrollbar(); // Removed from here
 }
 
-
 void TextViewerPage::drawScrollbar()
 {
     if (totalLines <= linesPerPage)
         return; // No scrollbar needed
 
     int scrollbarX = SCREEN_WIDTH - SCROLLBAR_WIDTH - SCROLLBAR_MARGIN;
-    int scrollbarY = CONTENT_Y; // Align with text content area top
+    int scrollbarY = CONTENT_Y;           // Align with text content area top
     int scrollbarHeight = CONTENT_HEIGHT; // Align with text content area height
 
     // Draw scrollbar track (clear previous first)
@@ -987,13 +1106,14 @@ void TextViewerPage::drawScrollbar()
     handleY = std::max(scrollbarY, handleY);
     handleY = std::min(handleY, scrollbarY + scrollbarHeight - handleHeight);
 
-
     // Draw scrollbar handle
     displayManager.getTFT()->fillRect(scrollbarX + 1, handleY, SCROLLBAR_WIDTH - 2, handleHeight, TFT_LIGHTGREY);
 
     // --- Draw Bookmark Markers ---
-    if (!bookmarks.empty() && totalLines > linesPerPage) {
-        for (int bookmarkLine : bookmarks) {
+    if (!bookmarks.empty() && totalLines > linesPerPage)
+    {
+        for (int bookmarkLine : bookmarks)
+        {
             // Calculate the relative position of the bookmark line
             float bookmarkScrollRatio = (float)bookmarkLine / (totalLines - linesPerPage);
             // Calculate the Y position on the scrollbar track
@@ -1009,8 +1129,10 @@ void TextViewerPage::drawScrollbar()
     }
 
     // --- Draw Detected Bookmark Markers (Green) ---
-    if (!detectedBookmarks.empty() && totalLines > linesPerPage) {
-        for (int detectedLine : detectedBookmarks) {
+    if (!detectedBookmarks.empty() && totalLines > linesPerPage)
+    {
+        for (int detectedLine : detectedBookmarks)
+        {
             // Calculate the relative position of the detected bookmark line
             float detectedScrollRatio = (float)detectedLine / (totalLines - linesPerPage);
             // Calculate the Y position on the scrollbar track
@@ -1029,7 +1151,7 @@ void TextViewerPage::drawScrollbar()
 void TextViewerPage::handleScroll(int touchY)
 {
     // Simple scroll: tapping top half scrolls up, bottom half scrolls down
-    int contentTopY = CONTENT_Y; // Use constant
+    int contentTopY = CONTENT_Y;        // Use constant
     int contentHeight = CONTENT_HEIGHT; // Use constant
     int midPointY = contentTopY + contentHeight / 2;
 
@@ -1053,15 +1175,18 @@ void TextViewerPage::handleScroll(int touchY)
     // Clamp scroll position
     currentScrollLine = std::max(0, currentScrollLine);
     // Adjust clamping: max scroll should be totalLines - linesPerPage
-    if (totalLines > linesPerPage) {
-         currentScrollLine = std::min(currentScrollLine, totalLines - linesPerPage);
-    } else {
-         currentScrollLine = 0; // Cannot scroll if content fits
+    if (totalLines > linesPerPage)
+    {
+        currentScrollLine = std::min(currentScrollLine, totalLines - linesPerPage);
+    }
+    else
+    {
+        currentScrollLine = 0; // Cannot scroll if content fits
     }
 
-
     // Only redraw if scroll position actually changed
-    if (currentScrollLine != previousScrollLine) {
+    if (currentScrollLine != previousScrollLine)
+    {
         // --- Clear only the content area, not the whole screen ---
         int contentClearX = TEXT_MARGIN_X;
         int contentClearY = CONTENT_Y;
@@ -1087,15 +1212,19 @@ void TextViewerPage::handleScroll(int touchY)
  * Called when navigating away from the page to free memory and reset state.
  * Saves the current scroll position to cache before clearing.
  */
-void TextViewerPage::cleanup() {
+void TextViewerPage::cleanup()
+{
     Serial.println("TextViewerPage::cleanup() called.");
 
     // Save current scroll position to cache before clearing state,
     // but only if the file was loaded successfully without errors.
-    if (fileLoaded && this->errorMessage.length() == 0 && totalLines > 0) {
+    if (fileLoaded && this->errorMessage.length() == 0 && totalLines > 0)
+    {
         Serial.println("Saving last scroll position before cleanup.");
         saveMetadataToCache(); // Save current state (including scroll line)
-    } else {
+    }
+    else
+    {
         Serial.println("Skipping cache save on cleanup due to load error or empty file.");
     }
 
@@ -1108,7 +1237,7 @@ void TextViewerPage::cleanup() {
     errorMessage = "";
     // Note: std::map doesn't have shrink_to_fit like std::vector.
     // Clearing it is usually sufficient to release nodes.
-    bookmarks.clear(); // Clear bookmarks vector
+    bookmarks.clear();         // Clear bookmarks vector
     bookmarks.shrink_to_fit(); // Try to release memory (optional)
 
     Serial.println("TextViewerPage resources cleaned up.");
@@ -1125,12 +1254,14 @@ void TextViewerPage::cleanup() {
  * @param currentOriginalFileSize The current size of the original .txt file to validate against the cache.
  * @return true if loading was successful and size matches, false otherwise.
  */
-bool TextViewerPage::loadMetadataFromCache(size_t currentOriginalFileSize) {
-    const char* cachePathCStr = cacheFilePath.c_str();
+bool TextViewerPage::loadMetadataFromCache(size_t currentOriginalFileSize)
+{
+    const char *cachePathCStr = cacheFilePath.c_str();
     Serial.printf("DEBUG: Attempting to load metadata from JSON cache: %s\n", cachePathCStr);
 
     File cacheFile = SDCard::getInstance().openFile(cachePathCStr, FILE_READ);
-    if (!cacheFile) {
+    if (!cacheFile)
+    {
         Serial.println("DEBUG: JSON cache file not found or could not be opened.");
         errorMessage = "Cache not found."; // Set a temporary error message if needed
         return false;
@@ -1143,22 +1274,24 @@ bool TextViewerPage::loadMetadataFromCache(size_t currentOriginalFileSize) {
     // Add overhead for keys and structure. Let's try 256KB initially.
     // IMPORTANT: This might exceed available RAM on some ESP32 models! Monitor memory usage.
     const size_t jsonCapacity = JSON_OBJECT_SIZE(5) + JSON_ARRAY_SIZE(500) + JSON_ARRAY_SIZE(10000) + 256 * 1024; // Adjust capacity as needed
-    DynamicJsonDocument doc(jsonCapacity); // Allocate on heap
+    DynamicJsonDocument doc(jsonCapacity);                                                                        // Allocate on heap
 
     Serial.println("DEBUG: Deserializing JSON from cache file...");
     DeserializationError error = deserializeJson(doc, cacheFile);
     cacheFile.close(); // Close file immediately after parsing
 
-    if (error) {
+    if (error)
+    {
         Serial.print("DEBUG: Failed to deserialize JSON cache: ");
         Serial.println(error.c_str());
         errorMessage = "Error: Cache invalid (JSON).";
         return false;
     }
-     Serial.println("DEBUG: JSON deserialized successfully.");
+    Serial.println("DEBUG: JSON deserialized successfully.");
 
     // --- Validate cached file size ---
-    if (!doc.containsKey("originalFileSize") || doc["originalFileSize"].as<size_t>() != currentOriginalFileSize) {
+    if (!doc.containsKey("originalFileSize") || doc["originalFileSize"].as<size_t>() != currentOriginalFileSize)
+    {
         Serial.printf("DEBUG: Cached file size (%u) does not match current file size (%u). Cache is invalid.\n",
                       doc["originalFileSize"].as<size_t>(), currentOriginalFileSize);
         errorMessage = "Cache invalid (size mismatch).";
@@ -1167,10 +1300,11 @@ bool TextViewerPage::loadMetadataFromCache(size_t currentOriginalFileSize) {
     Serial.println("DEBUG: Cached file size matches current file size.");
 
     // --- Extract data from JSON ---
-    if (!doc.containsKey("totalLines") || !doc.containsKey("lastScrollLine")) {
-         Serial.println("DEBUG: JSON cache missing required fields (totalLines or lastScrollLine).");
-         errorMessage = "Error: Cache invalid (missing fields).";
-         return false;
+    if (!doc.containsKey("totalLines") || !doc.containsKey("lastScrollLine"))
+    {
+        Serial.println("DEBUG: JSON cache missing required fields (totalLines or lastScrollLine).");
+        errorMessage = "Error: Cache invalid (missing fields).";
+        return false;
     }
 
     totalLines = doc["totalLines"].as<int>();
@@ -1178,74 +1312,98 @@ bool TextViewerPage::loadMetadataFromCache(size_t currentOriginalFileSize) {
 
     // Restore last scroll position, ensuring it's valid
     currentScrollLine = std::max(0, cachedScrollLine);
-    if (totalLines > linesPerPage) {
+    if (totalLines > linesPerPage)
+    {
         currentScrollLine = std::min(currentScrollLine, totalLines - linesPerPage);
-    } else {
+    }
+    else
+    {
         currentScrollLine = 0; // Cannot scroll if content fits
     }
     Serial.printf("DEBUG: Loaded TotalLines: %d, LastScrollLine: %d (Restored to: %d)\n", totalLines, cachedScrollLine, currentScrollLine);
 
-
     // --- Load Line Index ---
     lineIndex.clear();
-    if (doc.containsKey("lineIndex")) {
+    if (doc.containsKey("lineIndex"))
+    {
         JsonArray indexArray = doc["lineIndex"].as<JsonArray>();
-        if (!indexArray.isNull()) {
-             Serial.printf("DEBUG: Loading %u line index entries from JSON...\n", indexArray.size());
-             for (JsonObject entry : indexArray) {
-                 if (entry.containsKey("l") && entry.containsKey("p")) {
-                     lineIndex[entry["l"].as<int>()] = entry["p"].as<size_t>();
-                 } else {
-                      Serial.println("DEBUG: Warning - Invalid line index entry found in JSON cache.");
-                 }
-             }
-             Serial.printf("DEBUG: Finished loading %u line index entries.\n", lineIndex.size());
-        } else {
-             Serial.println("DEBUG: 'lineIndex' key found but is not a valid array in JSON cache.");
+        if (!indexArray.isNull())
+        {
+            Serial.printf("DEBUG: Loading %u line index entries from JSON...\n", indexArray.size());
+            for (JsonObject entry : indexArray)
+            {
+                if (entry.containsKey("l") && entry.containsKey("p"))
+                {
+                    lineIndex[entry["l"].as<int>()] = entry["p"].as<size_t>();
+                }
+                else
+                {
+                    Serial.println("DEBUG: Warning - Invalid line index entry found in JSON cache.");
+                }
+            }
+            Serial.printf("DEBUG: Finished loading %u line index entries.\n", lineIndex.size());
         }
-    } else {
+        else
+        {
+            Serial.println("DEBUG: 'lineIndex' key found but is not a valid array in JSON cache.");
+        }
+    }
+    else
+    {
         Serial.println("DEBUG: 'lineIndex' key not found in JSON cache.");
     }
 
-
     // --- Load Manual Bookmarks ---
     bookmarks.clear();
-    if (doc.containsKey("bookmarks")) {
+    if (doc.containsKey("bookmarks"))
+    {
         JsonArray bmArray = doc["bookmarks"].as<JsonArray>();
-        if (!bmArray.isNull()) {
+        if (!bmArray.isNull())
+        {
             Serial.printf("DEBUG: Loading %u manual bookmarks from JSON...\n", bmArray.size());
             bookmarks.reserve(bmArray.size());
-            for (JsonVariant v : bmArray) {
+            for (JsonVariant v : bmArray)
+            {
                 bookmarks.push_back(v.as<int>());
             }
             std::sort(bookmarks.begin(), bookmarks.end()); // Ensure sorted
             Serial.printf("DEBUG: Finished loading %u manual bookmarks.\n", bookmarks.size());
-        } else {
-             Serial.println("DEBUG: 'bookmarks' key found but is not a valid array in JSON cache.");
         }
-    } else {
+        else
+        {
+            Serial.println("DEBUG: 'bookmarks' key found but is not a valid array in JSON cache.");
+        }
+    }
+    else
+    {
         Serial.println("DEBUG: 'bookmarks' key not found in JSON cache.");
     }
 
     // --- Load Detected Bookmarks ---
     detectedBookmarks.clear();
-     if (doc.containsKey("detectedBookmarks")) {
+    if (doc.containsKey("detectedBookmarks"))
+    {
         JsonArray dbmArray = doc["detectedBookmarks"].as<JsonArray>();
-        if (!dbmArray.isNull()) {
+        if (!dbmArray.isNull())
+        {
             Serial.printf("DEBUG: Loading %u detected bookmarks from JSON...\n", dbmArray.size());
             detectedBookmarks.reserve(dbmArray.size());
-            for (JsonVariant v : dbmArray) {
+            for (JsonVariant v : dbmArray)
+            {
                 detectedBookmarks.push_back(v.as<int>());
             }
-             // No need to sort detected bookmarks, they are saved in order of detection
-             Serial.printf("DEBUG: Finished loading %u detected bookmarks.\n", detectedBookmarks.size());
-        } else {
-             Serial.println("DEBUG: 'detectedBookmarks' key found but is not a valid array in JSON cache.");
+            // No need to sort detected bookmarks, they are saved in order of detection
+            Serial.printf("DEBUG: Finished loading %u detected bookmarks.\n", detectedBookmarks.size());
         }
-    } else {
+        else
+        {
+            Serial.println("DEBUG: 'detectedBookmarks' key found but is not a valid array in JSON cache.");
+        }
+    }
+    else
+    {
         Serial.println("DEBUG: 'detectedBookmarks' key not found in JSON cache.");
     }
-
 
     errorMessage = ""; // Clear any previous error message if loading succeeded
     Serial.println("DEBUG: Successfully loaded all data from JSON cache.");
@@ -1257,25 +1415,30 @@ bool TextViewerPage::loadMetadataFromCache(size_t currentOriginalFileSize) {
  * last scroll position, manual bookmarks, detected bookmarks) to a unified JSON cache file.
  * Overwrites existing cache file if present.
  */
-void TextViewerPage::saveMetadataToCache() {
+void TextViewerPage::saveMetadataToCache()
+{
     Serial.println("DEBUG: Starting unified JSON cache save process.");
-    if (filePath.length() == 0) {
+    if (filePath.length() == 0)
+    {
         Serial.println("DEBUG: Skipping JSON cache save: No file path.");
         return;
     }
-     // We proceed even if lineIndex is empty, to save other data like scroll position/bookmarks.
+    // We proceed even if lineIndex is empty, to save other data like scroll position/bookmarks.
 
-    const char* originalPathCStr = filePath.c_str();
-    const char* cachePathCStr = cacheFilePath.c_str(); // Should be like /path/to/file.txt.cacheinfo
+    const char *originalPathCStr = filePath.c_str();
+    const char *cachePathCStr = cacheFilePath.c_str(); // Should be like /path/to/file.txt.cacheinfo
 
     // Get original file size again to store it in the cache
     size_t currentOriginalFileSize = 0;
     File originalFile = SDCard::getInstance().openFile(originalPathCStr);
-    if (!originalFile) {
+    if (!originalFile)
+    {
         Serial.println("DEBUG: Error! Could not open original file to get size for saving cache.");
         // Decide if we should proceed without the size? Probably not.
         return;
-    } else {
+    }
+    else
+    {
         currentOriginalFileSize = originalFile.size();
         originalFile.close();
         Serial.printf("DEBUG: Current original file size for cache: %u\n", currentOriginalFileSize);
@@ -1293,47 +1456,62 @@ void TextViewerPage::saveMetadataToCache() {
 
     // --- Add Line Index ---
     JsonArray indexArray = doc.createNestedArray("lineIndex");
-    if (!lineIndex.empty()) {
+    if (!lineIndex.empty())
+    {
         Serial.printf("DEBUG: Adding %u line index entries to JSON...\n", lineIndex.size());
-        for (const auto& pair : lineIndex) {
+        for (const auto &pair : lineIndex)
+        {
             JsonObject entry = indexArray.createNestedObject();
             entry["l"] = pair.first;  // Line number
             entry["p"] = pair.second; // Position
         }
-    } else {
-         Serial.println("DEBUG: Line index is empty. Adding empty array to JSON.");
+    }
+    else
+    {
+        Serial.println("DEBUG: Line index is empty. Adding empty array to JSON.");
     }
 
     // --- Add Manual Bookmarks ---
     JsonArray bmArray = doc.createNestedArray("bookmarks");
-     if (!bookmarks.empty()) {
+    if (!bookmarks.empty())
+    {
         Serial.printf("DEBUG: Adding %u manual bookmarks to JSON...\n", bookmarks.size());
-        for (int lineNum : bookmarks) {
+        for (int lineNum : bookmarks)
+        {
             bmArray.add(lineNum);
         }
-    } else {
-         Serial.println("DEBUG: Manual bookmarks vector is empty. Adding empty array to JSON.");
+    }
+    else
+    {
+        Serial.println("DEBUG: Manual bookmarks vector is empty. Adding empty array to JSON.");
     }
 
     // --- Add Detected Bookmarks ---
     JsonArray dbmArray = doc.createNestedArray("detectedBookmarks");
-    if (!detectedBookmarks.empty()) {
+    if (!detectedBookmarks.empty())
+    {
         Serial.printf("DEBUG: Adding %u detected bookmarks to JSON...\n", detectedBookmarks.size());
-        for (int lineNum : detectedBookmarks) {
+        for (int lineNum : detectedBookmarks)
+        {
             dbmArray.add(lineNum);
         }
-    } else {
-         Serial.println("DEBUG: Detected bookmarks vector is empty. Adding empty array to JSON.");
+    }
+    else
+    {
+        Serial.println("DEBUG: Detected bookmarks vector is empty. Adding empty array to JSON.");
     }
 
     // --- Write JSON to File ---
     Serial.printf("DEBUG: Attempting to open JSON cache file for writing: %s\n", cachePathCStr);
     File cacheFile = SDCard::getInstance().openFile(cachePathCStr, FILE_WRITE);
-    if (!cacheFile) {
+    if (!cacheFile)
+    {
         Serial.println("DEBUG: Error! Could not open JSON cache file for writing.");
         return;
-    } else {
-         Serial.println("DEBUG: Successfully opened JSON cache file for writing.");
+    }
+    else
+    {
+        Serial.println("DEBUG: Successfully opened JSON cache file for writing.");
     }
 
     Serial.println("DEBUG: Attempting to serialize JSON to file...");
@@ -1341,15 +1519,21 @@ void TextViewerPage::saveMetadataToCache() {
     cacheFile.close(); // Close immediately after writing
     Serial.println("DEBUG: Closed JSON cache file after writing.");
 
-    if (bytesWritten > 0) {
+    if (bytesWritten > 0)
+    {
         Serial.printf("DEBUG: Successfully saved unified JSON cache for %s (%u bytes written).\n",
                       filePath.c_str(), bytesWritten);
-    } else {
+    }
+    else
+    {
         Serial.println("DEBUG: Error! Failed to write JSON data (serializeJson returned 0 bytes).");
         Serial.println("DEBUG: Attempting to remove potentially corrupted/empty JSON cache file.");
-        if (SD.remove(cachePathCStr)) { // Use standard SD.remove()
+        if (SD.remove(cachePathCStr))
+        { // Use standard SD.remove()
             Serial.println("DEBUG: Removed empty/corrupted JSON cache file.");
-        } else {
+        }
+        else
+        {
             Serial.println("DEBUG: Failed to remove JSON cache file.");
         }
     }
@@ -1365,19 +1549,24 @@ void TextViewerPage::saveMetadataToCache() {
 /**
  * @brief Adds or removes a bookmark at the current scroll line.
  */
-void TextViewerPage::toggleBookmark() {
-    if (!fileLoaded || totalLines <= 0) return; // Can't bookmark if file not loaded or empty
+void TextViewerPage::toggleBookmark()
+{
+    if (!fileLoaded || totalLines <= 0)
+        return; // Can't bookmark if file not loaded or empty
 
     int lineToBookmark = currentScrollLine;
 
     // Check if the bookmark already exists
     auto it = std::find(bookmarks.begin(), bookmarks.end(), lineToBookmark);
 
-    if (it != bookmarks.end()) {
+    if (it != bookmarks.end())
+    {
         // Bookmark exists, remove it
         bookmarks.erase(it);
         Serial.printf("Bookmark removed for line: %d\n", lineToBookmark);
-    } else {
+    }
+    else
+    {
         // Bookmark doesn't exist, add it
         bookmarks.push_back(lineToBookmark);
         // Keep the vector sorted for efficient navigation
@@ -1393,14 +1582,17 @@ void TextViewerPage::toggleBookmark() {
 /**
  * @brief Jumps to the bookmark (manual or detected) immediately before the current scroll line.
  */
-void TextViewerPage::goToPrevBookmark() {
-    if (!fileLoaded) return;
+void TextViewerPage::goToPrevBookmark()
+{
+    if (!fileLoaded)
+        return;
 
     // 1. Combine manual and detected bookmarks
-    std::vector<int> allBookmarks = bookmarks; // Start with manual bookmarks
+    std::vector<int> allBookmarks = bookmarks;                                                   // Start with manual bookmarks
     allBookmarks.insert(allBookmarks.end(), detectedBookmarks.begin(), detectedBookmarks.end()); // Add detected bookmarks
 
-    if (allBookmarks.empty()) {
+    if (allBookmarks.empty())
+    {
         Serial.println("No bookmarks (manual or detected) to navigate.");
         return; // Nothing to do
     }
@@ -1413,21 +1605,27 @@ void TextViewerPage::goToPrevBookmark() {
     auto it = std::lower_bound(allBookmarks.begin(), allBookmarks.end(), currentScrollLine);
 
     // 4. If it's not the beginning, the previous element is the target
-    if (it != allBookmarks.begin()) {
+    if (it != allBookmarks.begin())
+    {
         --it; // Move to the bookmark strictly less than currentScrollLine
         int targetLine = *it;
         Serial.printf("Going to previous bookmark (combined): Line %d\n", targetLine);
 
         // Clamp and redraw
         currentScrollLine = std::max(0, targetLine);
-        if (totalLines > linesPerPage) {
+        if (totalLines > linesPerPage)
+        {
             currentScrollLine = std::min(currentScrollLine, totalLines - linesPerPage);
-        } else {
+        }
+        else
+        {
             currentScrollLine = 0;
         }
         // Full redraw needed after jump
         display(); // Easiest way to trigger full redraw
-    } else {
+    }
+    else
+    {
         Serial.println("No previous bookmark found.");
         // Optionally provide feedback to the user (e.g., flash screen?)
     }
@@ -1436,14 +1634,17 @@ void TextViewerPage::goToPrevBookmark() {
 /**
  * @brief Jumps to the bookmark (manual or detected) immediately after the current scroll line.
  */
-void TextViewerPage::goToNextBookmark() {
-     if (!fileLoaded) return;
+void TextViewerPage::goToNextBookmark()
+{
+    if (!fileLoaded)
+        return;
 
     // 1. Combine manual and detected bookmarks
-    std::vector<int> allBookmarks = bookmarks; // Start with manual bookmarks
+    std::vector<int> allBookmarks = bookmarks;                                                   // Start with manual bookmarks
     allBookmarks.insert(allBookmarks.end(), detectedBookmarks.begin(), detectedBookmarks.end()); // Add detected bookmarks
 
-    if (allBookmarks.empty()) {
+    if (allBookmarks.empty())
+    {
         Serial.println("No bookmarks (manual or detected) to navigate.");
         return; // Nothing to do
     }
@@ -1456,21 +1657,32 @@ void TextViewerPage::goToNextBookmark() {
     auto it = std::upper_bound(allBookmarks.begin(), allBookmarks.end(), currentScrollLine);
 
     // 4. If it's not the end, this is the target
-    if (it != allBookmarks.end()) {
+    if (it != allBookmarks.end())
+    {
         int targetLine = *it;
         Serial.printf("Going to next bookmark (combined): Line %d\n", targetLine);
 
         // Clamp and redraw
         currentScrollLine = std::max(0, targetLine);
-         if (totalLines > linesPerPage) {
+        if (totalLines > linesPerPage)
+        {
             currentScrollLine = std::min(currentScrollLine, totalLines - linesPerPage);
-        } else {
+        }
+        else
+        {
             currentScrollLine = 0;
         }
         // Full redraw needed after jump
         display(); // Easiest way to trigger full redraw
-    } else {
+    }
+    else
+    {
         Serial.println("No next bookmark found.");
         // Optionally provide feedback to the user
     }
+}
+void TextViewerPage::handleLoop()
+{
+    // Currently no periodic tasks needed for text viewer
+    return;
 }

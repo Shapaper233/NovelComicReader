@@ -188,11 +188,6 @@ private:
      */
     bool drawNewArea(int y, int h);
 
-    /**
-     * @brief Helper function to process a touch event that interrupted drawing.
-     */
-    void handleTouchInterrupt();
-
 public:
     /**
      * @brief ComicViewerPage 构造函数

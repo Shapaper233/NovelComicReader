@@ -64,10 +64,13 @@ void ComicViewerPage::loadImages()
     Serial.println(currentPath);
 
     // --- Display Loading Message ---
-    displayManager.getTFT()->fillScreen(TFT_WHITE); // Clear screen
-    displayManager.drawCenteredText("Loading Comic...", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    Serial.println("Displayed loading message.");
-    // --- End Loading Message ---
+    TFT_eSPI* tft = displayManager.getTFT();
+    tft->fillScreen(TFT_WHITE); // Clear screen
+    tft->setTextColor(TFT_BLACK, TFT_WHITE); // Set text color
+    tft->setTextDatum(MC_DATUM); // Center alignment
+    tft->drawString("Loading Comic...", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 10);
+    Serial.println("Displayed initial loading message.");
+    // --- End Initial Loading Message ---
 
     // 寻找从 1.bmp 开始的连续图片文件
     int index = 1;
@@ -103,6 +106,15 @@ void ComicViewerPage::loadImages()
         Serial.print("  Image height: ");
         Serial.println(height);
         // --- 结束高度计算 ---
+
+        // --- Update Loading Progress Display ---
+        // Clear previous progress line (optional, depends on font/size)
+        tft->fillRect(0, SCREEN_HEIGHT / 2 + 10, SCREEN_WIDTH, 20, TFT_WHITE);
+        String progressText = "Loaded: " + String(index) + " (H:" + String(height) + ") Total H: " + String(totalComicHeight);
+        tft->drawString(progressText, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 10);
+        Serial.println(progressText);
+        // --- End Progress Update ---
+
 
         index++; // 准备查找下一个文件
     }
@@ -252,7 +264,11 @@ bool ComicViewerPage::drawContent()
         if (touchManager.isTouched()) {
             Serial.println("Touch detected during drawContent (image loop), stopping draw.");
             touchDetected = true;
-            break;
+
+            uint16_t touchX, touchY;
+            touchManager.getPoint(touchX, touchY); // 获取触摸坐标
+            handleTouch(touchX, touchY);           // 处理触摸中断
+            return false;                           // Exit row loop for this chunk
         }
         // --- End touch check ---
 
@@ -353,7 +369,10 @@ bool ComicViewerPage::drawContent()
                 if (touchManager.isTouched()) {
                     Serial.println("Touch detected during drawContent (chunk read loop), stopping draw.");
                     touchDetected = true;
-                    break; // Exit the chunk reading loop for this image
+                    uint16_t touchX, touchY;
+                    touchManager.getPoint(touchX, touchY); // 获取触摸坐标
+                    handleTouch(touchX, touchY);           // 处理触摸中断
+                    return false;
                 }
                 // --- End touch check ---
 
@@ -397,7 +416,10 @@ bool ComicViewerPage::drawContent()
                     if (touchManager.isTouched()) {
                         Serial.println("Touch detected during drawContent (row process loop), stopping draw.");
                         touchDetected = true;
-                        break; // Exit the row processing loop for this chunk
+                        uint16_t touchX, touchY;
+                        touchManager.getPoint(touchX, touchY); // 获取触摸坐标
+                        handleTouch(touchX, touchY);           // 处理触摸中断
+                        return false;
                     }
                     // --- End touch check ---
 
@@ -458,6 +480,33 @@ bool ComicViewerPage::drawContent()
         return true; // Indicate interruption
     }
 
+    // --- Draw Scroll Bar ---
+    if (totalComicHeight > SCREEN_HEIGHT) {
+        const int scrollBarWidth = 5;
+        const int scrollBarX = SCREEN_WIDTH - scrollBarWidth;
+        const uint16_t scrollBarColor = TFT_LIGHTGREY;
+        const uint16_t thumbColor = TFT_DARKGREY;
+        const int minThumbHeight = 10;
+
+        // Calculate thumb height (proportional to visible content ratio)
+        int thumbHeight = (int)((float)SCREEN_HEIGHT / totalComicHeight * SCREEN_HEIGHT);
+        thumbHeight = std::max(minThumbHeight, thumbHeight); // Ensure minimum height
+        thumbHeight = std::min(SCREEN_HEIGHT, thumbHeight); // Ensure not taller than screen
+
+        // Calculate thumb position
+        int maxScrollOffset = totalComicHeight - SCREEN_HEIGHT;
+        int thumbY = (int)((float)scrollOffset / maxScrollOffset * (SCREEN_HEIGHT - thumbHeight));
+        thumbY = std::max(0, std::min(thumbY, SCREEN_HEIGHT - thumbHeight)); // Clamp position
+
+        // Draw scroll bar track
+        displayManager.getTFT()->fillRect(scrollBarX, 0, scrollBarWidth, SCREEN_HEIGHT, scrollBarColor);
+        // Draw thumb
+        displayManager.getTFT()->fillRect(scrollBarX, thumbY, scrollBarWidth, thumbHeight, thumbColor);
+        Serial.print("Drew scrollbar. Thumb Y: "); Serial.print(thumbY); Serial.print(", Thumb H: "); Serial.println(thumbHeight);
+    }
+    // --- End Scroll Bar ---
+
+
     return false; // Drawing completed without interruption
 }
 
@@ -492,13 +541,15 @@ void ComicViewerPage::scrollDisplay(int scrollDelta)
     tft->fillScreen(TFT_WHITE); // 清空屏幕
     // 调用 drawNewArea 绘制整个屏幕 (y=0, h=SCREEN_HEIGHT)
     // drawNewArea 内部会根据当前的 scrollOffset 来绘制正确的内容
-    if (drawNewArea(0, SCREEN_HEIGHT)) {
-        // If drawing was interrupted, handle the touch immediately
-        handleTouchInterrupt();
-    }
+    drawNewArea(0, SCREEN_HEIGHT); // Call drawNewArea, ignore return value for now
     // --- 结束临时测试 ---
 
     /* --- 原始优化滚动逻辑 (注释掉以进行测试) ---
+    ... [omitted original scroll logic for brevity] ...
+    // --- 绘制新暴露区域的内容 ---
+    Serial.println("Drawing new area content...");
+    // Call drawNewArea, ignore return value for now
+    drawNewArea(newAreaY, newAreaHeight);
     ... [omitted original scroll logic for brevity] ...
     // --- 绘制新暴露区域的内容 ---
     Serial.println("Drawing new area content...");
@@ -646,7 +697,10 @@ bool ComicViewerPage::drawNewArea(int y, int h)
         if (touchManager.isTouched()) {
             Serial.println("Touch detected during drawNewArea (image loop), stopping draw.");
             touchDetected = true;
-            break;
+            uint16_t touchX, touchY;
+            touchManager.getPoint(touchX, touchY); // 获取触摸坐标
+            handleTouch(touchX, touchY);           // 处理触摸中断
+            return false;
         }
         // --- End touch check ---
 
@@ -708,7 +762,10 @@ bool ComicViewerPage::drawNewArea(int y, int h)
                     if (touchManager.isTouched()) {
                         Serial.println("Touch detected during drawNewArea (chunk read loop), stopping draw.");
                         touchDetected = true;
-                        break; // Exit chunk loop for this image
+                        uint16_t touchX, touchY;
+                        touchManager.getPoint(touchX, touchY); // 获取触摸坐标
+                        handleTouch(touchX, touchY);           // 处理触摸中断
+                        return false;
                     }
                     // --- End touch check ---
 
@@ -736,7 +793,10 @@ bool ComicViewerPage::drawNewArea(int y, int h)
                         if (touchManager.isTouched()) {
                             Serial.println("Touch detected during drawNewArea (row process loop), stopping draw.");
                             touchDetected = true;
-                            break; // Exit row loop for this chunk
+                            uint16_t touchX, touchY;
+                            touchManager.getPoint(touchX, touchY); // 获取触摸坐标
+                            handleTouch(touchX, touchY); // 处理触摸中断
+                            return false; // Exit row loop for this chunk
                         }
                         // --- End touch check ---
 
@@ -790,7 +850,34 @@ bool ComicViewerPage::drawNewArea(int y, int h)
         Serial.println("DrawNewArea interrupted by touch.");
         return true; // Indicate interruption
     } else {
-        Serial.println("Finished drawing new area.");
+         Serial.println("Finished drawing new area.");
+
+        // --- Draw Scroll Bar (Copied from drawContent) ---
+        if (totalComicHeight > SCREEN_HEIGHT) {
+            const int scrollBarWidth = 5;
+            const int scrollBarX = SCREEN_WIDTH - scrollBarWidth;
+            const uint16_t scrollBarColor = TFT_LIGHTGREY;
+            const uint16_t thumbColor = TFT_DARKGREY;
+            const int minThumbHeight = 10;
+
+            // Calculate thumb height
+            int thumbHeight = (int)((float)SCREEN_HEIGHT / totalComicHeight * SCREEN_HEIGHT);
+            thumbHeight = std::max(minThumbHeight, thumbHeight);
+            thumbHeight = std::min(SCREEN_HEIGHT, thumbHeight);
+
+            // Calculate thumb position
+            int maxScrollOffset = totalComicHeight - SCREEN_HEIGHT;
+            // Prevent division by zero if maxScrollOffset is 0 (shouldn't happen if totalComicHeight > SCREEN_HEIGHT)
+            int thumbY = (maxScrollOffset > 0) ? (int)((float)scrollOffset / maxScrollOffset * (SCREEN_HEIGHT - thumbHeight)) : 0;
+            thumbY = std::max(0, std::min(thumbY, SCREEN_HEIGHT - thumbHeight));
+
+            // Draw scroll bar track and thumb
+            displayManager.getTFT()->fillRect(scrollBarX, 0, scrollBarWidth, SCREEN_HEIGHT, scrollBarColor);
+            displayManager.getTFT()->fillRect(scrollBarX, thumbY, scrollBarWidth, thumbHeight, thumbColor);
+            Serial.print("Drew scrollbar in drawNewArea. Thumb Y: "); Serial.print(thumbY); Serial.print(", Thumb H: "); Serial.println(thumbHeight);
+        }
+        // --- End Scroll Bar ---
+
         return false; // Indicate successful completion
     }
 }
@@ -824,14 +911,14 @@ bool ComicViewerPage::handleScrollGesture(uint16_t x, uint16_t y)
     uint32_t currentTime = millis(); // 获取当前时间
 
     // 如果两次点击间隔小于 500 毫秒，视为双击
-    if (currentTime - lastTapTime < 500)
-    {
-        Serial.println("Double tap detected, returning to browser");
-        //Router::getInstance().goBack(); // 返回到上一个页面（文件浏览器）
-        //不返回了，不然太难用了
-        lastTapTime = 0; // 重置时间，避免连续触发
-        return true; // 事件已处理
-    }
+    // if (currentTime - lastTapTime < 500)
+    // {
+    //     Serial.println("Double tap detected, returning to browser");
+    //     //Router::getInstance().goBack(); // 返回到上一个页面（文件浏览器）
+    //     //不返回了，不然太难用了
+    //     lastTapTime = 0; // 重置时间，避免连续触发
+    //     //return true; // 事件已处理
+    // }
     lastTapTime = currentTime; // 更新上次点击时间
     // --- 结束双击检测 ---
 
@@ -882,24 +969,6 @@ bool ComicViewerPage::handleScrollGesture(uint16_t x, uint16_t y)
 
 
 /**
- * @brief Helper function to process a touch event that interrupted drawing.
- * Reads the touch point and calls the main handleTouch logic.
- */
-void ComicViewerPage::handleTouchInterrupt() {
-    uint16_t tx, ty;
-    // Attempt to get the touch point that caused the interrupt
-    if (touchManager.getPoint(tx, ty)) {
-        Serial.print("Handling touch interrupt at: (");
-        Serial.print(tx); Serial.print(", "); Serial.print(ty); Serial.println(")");
-        handleTouch(tx, ty); // Process the touch using the standard handler
-    } else {
-        Serial.println("Could not get touch point after interrupt.");
-        // Optionally, trigger a redraw or other recovery action if needed
-    }
-}
-
-
-/**
  * @brief 设置当前要显示的漫画所在的目录路径。
  * 会重置滚动偏移，并调用 loadImages() 重新加载该目录下的图片。
  *
@@ -925,10 +994,7 @@ void ComicViewerPage::display()
     Serial.print("Display called, image count: ");
     Serial.println(imageFiles.size());
     // 绘制内容（会根据当前的 scrollOffset 绘制）
-    if (drawContent()) {
-        // If drawing was interrupted, handle the touch immediately
-        handleTouchInterrupt();
-    }
+    drawContent(); // Call drawContent, ignore return value for now
 }
 
 /**
